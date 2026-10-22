@@ -1,82 +1,73 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { GuestInvitationView } from '../components/GuestInvitationView';
 import { guest } from '../app/guest/guest';
 import { offline } from '../common/offline';
+import { progress } from '../app/guest/progress';
 
-describe('End-to-End Runtime Integration (Guest Flow)', () => {
+describe('Declarative React Runtime Integration (Guest Flow, Progress & Offline)', () => {
     beforeEach(() => {
         localStorage.clear();
-        document.body.innerHTML = '';
+        window.history.pushState({}, '', '/');
+        guest.reset();
         vi.restoreAllMocks();
     });
 
-    it('initializes Guest flow, parses ?to= query parameter, opens invitation, and opens image modal', () => {
-        window.history.pushState({}, '', '/?to=Dr.%20Hassan');
-        document.body.setAttribute('data-time', '2026-10-08 21:00:00');
-        document.body.setAttribute('data-confetti', 'false');
-        document.body.innerHTML = `
-            <div id="root" class="opacity-0">
-                <section id="home"><button type="button">Calendar</button></section>
-            </div>
-            <div id="welcome" style="opacity: 1;">
-                <div id="guest-name" data-message="Dear Mr./Mrs./Ms."></div>
-                <button id="btn-open" type="button">Open Invitation</button>
-            </div>
-            <div id="loading" style="opacity: 1;">
-                <div id="progress-bar" style="width: 0%;"></div>
-                <small id="progress-info" class="d-none"></small>
-            </div>
-            <button id="button-theme" class="d-none"></button>
-            <button id="button-music" class="d-none"></button>
-            <p id="day">0</p><p id="hour">0</p><p id="minute">0</p><p id="second">0</p>
-            <div id="modal-image">
-                <a id="button-modal-click" href="#"></a>
-                <button id="button-modal-download"></button>
-                <img id="show-modal-image" src="" />
-            </div>
-        `;
+    it('reactively updates loading progress and reveals invitation via external store subscription', () => {
+        const { container } = render(<GuestInvitationView />);
 
-        const instance = guest.init();
-        expect(instance.guest).toBeDefined();
-        expect(instance.theme).toBeDefined();
-        expect('comment' in instance).toBe(false);
+        act(() => {
+            progress.init();
+            progress.add();
+            progress.add();
+        });
 
-        const btnOpen = document.getElementById('btn-open') as HTMLButtonElement;
-        instance.guest.open(btnOpen);
+        expect(container.querySelector('#progress-bar')).toHaveStyle({ width: '0%' });
 
-        expect(btnOpen.disabled).toBe(true);
-        expect(document.getElementById('root')?.classList.contains('opacity-0')).toBe(false);
+        act(() => {
+            progress.complete('image');
+        });
 
-        const sampleImg = document.createElement('img');
-        sampleImg.src = 'https://ulems.my.id/assets/images/3.jpeg';
-        sampleImg.width = 500;
-        sampleImg.height = 500;
-        instance.guest.modal(sampleImg);
+        expect(container.querySelector('#progress-bar')).toHaveStyle({ width: '50%' });
+        expect(screen.getByText(/Loading image complete \(1\/2\) \[50%\]/i)).toBeInTheDocument();
 
-        expect(document.getElementById('button-modal-click')?.getAttribute('href')).toBe(
-            'https://ulems.my.id/assets/images/3.jpeg',
-        );
-        expect((document.getElementById('show-modal-image') as HTMLImageElement).src).toBe(
-            'https://ulems.my.id/assets/images/3.jpeg',
-        );
+        act(() => {
+            guest.open();
+        });
+
+        expect(container.querySelector('#root')).not.toHaveClass('opacity-0');
     });
 
-    it('handles offline and online network transitions across interactive controls', () => {
-        document.body.innerHTML = `
-            <input id="test-input" data-offline-disabled="false" />
-            <button id="test-btn" data-offline-disabled="false">Submit</button>
-        `;
+    it('declaratively renders offline/online network banner and disables audio button when offline', () => {
+        const cleanupOffline = offline.init();
 
-        offline.init();
-        expect(offline.isOnline()).toBe(true);
+        const { container } = render(<GuestInvitationView />);
 
-        window.dispatchEvent(new Event('offline'));
+        act(() => {
+            guest.open();
+        });
+
+        const musicBtn = container.querySelector('#button-music') as HTMLButtonElement;
+        expect(musicBtn.disabled).toBe(false);
+
+        act(() => {
+            window.dispatchEvent(new Event('offline'));
+        });
+
         expect(offline.isOnline()).toBe(false);
-        expect(document.getElementById('test-input')?.getAttribute('disabled')).toBe('true');
-        expect(document.getElementById('test-btn')?.classList.contains('disabled')).toBe(true);
+        expect(screen.getByText('Koneksi tidak tersedia')).toBeInTheDocument();
+        expect(musicBtn.disabled).toBe(true);
+        expect(musicBtn).toHaveClass('disabled');
 
-        window.dispatchEvent(new Event('online'));
+        act(() => {
+            window.dispatchEvent(new Event('online'));
+        });
+
         expect(offline.isOnline()).toBe(true);
-        expect(document.getElementById('test-input')?.hasAttribute('disabled')).toBe(false);
-        expect(document.getElementById('test-btn')?.classList.contains('disabled')).toBe(false);
+        expect(screen.getByText('Koneksi tersedia kembali')).toBeInTheDocument();
+        expect(musicBtn.disabled).toBe(false);
+        expect(musicBtn).not.toHaveClass('disabled');
+
+        cleanupOffline();
     });
 });

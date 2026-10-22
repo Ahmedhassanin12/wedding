@@ -25,10 +25,6 @@ export interface NotifyActions {
     custom: (emoji: string) => void;
 }
 
-export interface DisableRestoreHandle {
-    restore: (disabled?: boolean) => void;
-}
-
 export interface StorageAdapter<T = Record<string, unknown>> {
     get: <K extends keyof T & string>(key?: K | null) => any;
     set: <K extends keyof T & string>(key: K, value: T[K]) => void;

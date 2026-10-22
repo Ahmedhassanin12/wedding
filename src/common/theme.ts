@@ -1,6 +1,11 @@
 import { storage } from './storage';
 import type { StorageAdapter } from '../types';
 
+export interface ThemeSnapshot {
+    isDark: boolean;
+    isAuto: boolean;
+}
+
 export const theme = (() => {
     const themeColors: Readonly<Record<string, string>> = {
         '#000000': '#ffffff',
@@ -14,12 +19,26 @@ export const theme = (() => {
     let isAuto = false;
     let themes: StorageAdapter<{ active: string }> | null = null;
     let metaTheme: HTMLElement | null = null;
+    const listeners = new Set<() => void>();
+
+    let currentSnapshot: ThemeSnapshot = {
+        isDark: false,
+        isAuto: false,
+    };
 
     const ensureThemes = (): StorageAdapter<{ active: string }> => {
         if (!themes) {
             themes = storage<{ active: string }>('theme');
         }
         return themes;
+    };
+
+    const emitChange = (): void => {
+        currentSnapshot = {
+            isDark: ensureThemes().get('active') === 'dark',
+            isAuto,
+        };
+        listeners.forEach((listener) => listener());
     };
 
     const setLight = (): void => ensureThemes().set('active', 'light');
@@ -41,12 +60,14 @@ export const theme = (() => {
         setLight();
         document.documentElement.setAttribute('data-bs-theme', 'light');
         setMetaTheme(themeDark);
+        emitChange();
     };
 
     const onDark = (): void => {
         setDark();
         document.documentElement.setAttribute('data-bs-theme', 'dark');
         setMetaTheme(themeLight);
+        emitChange();
     };
 
     function isDarkMode(): boolean;
@@ -65,9 +86,22 @@ export const theme = (() => {
 
     const isAutoMode = (): boolean => isAuto;
 
-    const spyTop = (): void => {
+    const getSnapshot = (): ThemeSnapshot => currentSnapshot;
+
+    const subscribe = (listener: () => void): (() => void) => {
+        listeners.add(listener);
+        return () => {
+            listeners.delete(listener);
+        };
+    };
+
+    /**
+     * Observes section elements via IntersectionObserver to synchronize mobile browser
+     * `<meta name="theme-color">` with the currently visible section background.
+     */
+    const observeSections = (sections?: Iterable<Element> | null): (() => void) => {
         if (typeof IntersectionObserver === 'undefined') {
-            return;
+            return () => {};
         }
 
         const callback: IntersectionObserverCallback = (es) =>
@@ -82,7 +116,12 @@ export const theme = (() => {
                 });
 
         const observerTop = new IntersectionObserver(callback, { rootMargin: '0% 0% -95% 0%' });
-        document.querySelectorAll('section').forEach((e) => observerTop.observe(e));
+        const targets = sections ? Array.from(sections) : [];
+        targets.forEach((e) => observerTop.observe(e));
+
+        return () => {
+            observerTop.disconnect();
+        };
     };
 
     const init = (): void => {
@@ -103,12 +142,15 @@ export const theme = (() => {
         switch (document.documentElement.getAttribute('data-bs-theme')) {
             case 'dark':
                 setDark();
+                isAuto = false;
                 break;
             case 'light':
                 setLight();
+                isAuto = false;
                 break;
             default:
                 isAuto = true;
+                break;
         }
 
         if (isDarkMode()) {
@@ -120,9 +162,11 @@ export const theme = (() => {
 
     return {
         init,
-        spyTop,
+        observeSections,
         change,
         isDarkMode,
         isAutoMode,
+        subscribe,
+        getSnapshot,
     };
 })();

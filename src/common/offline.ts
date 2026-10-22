@@ -1,111 +1,95 @@
 import { util } from './util';
 
-export const offline = (() => {
-    let alertEl: HTMLElement | null = null;
-    let online = true;
+export interface OfflineSnapshot {
+    isOnline: boolean;
+    bannerState: 'hidden' | 'offline' | 'online-restored';
+}
 
-    const classes = [
-        'input[data-offline-disabled]',
-        'button[data-offline-disabled]',
-        'select[data-offline-disabled]',
-        'textarea[data-offline-disabled]',
-    ];
+export const offline = (() => {
+    let online = true;
+    let bannerState: 'hidden' | 'offline' | 'online-restored' = 'hidden';
+    let restoreTimerCancel: (() => void) | null = null;
+    let initialized = false;
+    const listeners = new Set<() => void>();
+
+    let currentSnapshot: OfflineSnapshot = {
+        isOnline: true,
+        bannerState: 'hidden',
+    };
+
+    const emitChange = (): void => {
+        currentSnapshot = {
+            isOnline: online,
+            bannerState,
+        };
+        listeners.forEach((listener) => listener());
+    };
 
     const isOnline = (): boolean => online;
 
-    const setOffline = (): void => {
-        const el = alertEl?.firstElementChild?.firstElementChild;
-        if (!el) {
-            return;
-        }
-        el.classList.remove('bg-success');
-        el.classList.add('bg-danger');
-        if (el.firstElementChild) {
-            el.firstElementChild.innerHTML = '<i class="fa-solid fa-ban me-2"></i>Koneksi tidak tersedia';
-        }
-    };
+    const getSnapshot = (): OfflineSnapshot => currentSnapshot;
 
-    const setOnline = (): void => {
-        const el = alertEl?.firstElementChild?.firstElementChild;
-        if (!el) {
-            return;
-        }
-        el.classList.remove('bg-danger');
-        el.classList.add('bg-success');
-        if (el.firstElementChild) {
-            el.firstElementChild.innerHTML = '<i class="fa-solid fa-cloud me-2"></i>Koneksi tersedia kembali';
-        }
-    };
-
-    const setDefaultState = async (): Promise<void> => {
-        if (!online || !alertEl) {
-            return;
-        }
-
-        await util.changeOpacity(alertEl, false);
-        setOffline();
-    };
-
-    const changeState = (): void => {
-        document.querySelectorAll<HTMLElement>(classes.join(', ')).forEach((e) => {
-            e.dispatchEvent(new Event(isOnline() ? 'online' : 'offline'));
-            e.setAttribute('data-offline-disabled', isOnline() ? 'false' : 'true');
-
-            if (e.tagName === 'BUTTON') {
-                if (isOnline()) {
-                    e.classList.remove('disabled');
-                } else {
-                    e.classList.add('disabled');
-                }
-            } else if (isOnline()) {
-                e.removeAttribute('disabled');
-            } else {
-                e.setAttribute('disabled', 'true');
-            }
-        });
+    const subscribe = (listener: () => void): (() => void) => {
+        listeners.add(listener);
+        return () => {
+            listeners.delete(listener);
+        };
     };
 
     const onOffline = (): void => {
-        online = false;
-
-        setOffline();
-        if (alertEl) {
-            util.changeOpacity(alertEl, true);
+        if (restoreTimerCancel) {
+            restoreTimerCancel();
+            restoreTimerCancel = null;
         }
-        changeState();
+        online = false;
+        bannerState = 'offline';
+        emitChange();
     };
 
     const onOnline = (): void => {
+        if (restoreTimerCancel) {
+            restoreTimerCancel();
+            restoreTimerCancel = null;
+        }
         online = true;
+        bannerState = 'online-restored';
+        emitChange();
 
-        setOnline();
-        util.timeOut(setDefaultState, 3000);
-        changeState();
+        restoreTimerCancel = util.timeOut(() => {
+            if (online) {
+                bannerState = 'hidden';
+                emitChange();
+            }
+        }, 3000);
     };
 
-    const init = (): void => {
-        window.addEventListener('online', onOnline);
-        window.addEventListener('offline', onOffline);
-
-        if (alertEl && document.body.contains(alertEl)) {
-            return;
+    const init = (): (() => void) => {
+        if (!initialized) {
+            online = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+            bannerState = online ? 'hidden' : 'offline';
+            currentSnapshot = { isOnline: online, bannerState };
+            window.addEventListener('online', onOnline);
+            window.addEventListener('offline', onOffline);
+            initialized = true;
         }
 
-        alertEl = document.createElement('div');
-        alertEl.classList.add('fixed-top', 'pe-none');
-        alertEl.style.cssText = 'opacity: 0; z-index: 1057;';
-        alertEl.innerHTML = `
-        <div class="d-flex justify-content-center mx-auto">
-            <div class="d-flex justify-content-center align-items-center rounded-pill my-2 bg-danger shadow">
-                <small class="text-center py-1 px-2 mx-1 mt-1 mb-0 text-white" style="font-size: 0.8rem;"></small>
-            </div>
-        </div>`;
-
-        document.body.insertBefore(alertEl, document.body.lastChild);
+        return () => {
+            if (initialized) {
+                window.removeEventListener('online', onOnline);
+                window.removeEventListener('offline', onOffline);
+                if (restoreTimerCancel) {
+                    restoreTimerCancel();
+                    restoreTimerCancel = null;
+                }
+                initialized = false;
+            }
+        };
     };
 
     return {
         init,
         isOnline,
+        subscribe,
+        getSnapshot,
     };
 })();

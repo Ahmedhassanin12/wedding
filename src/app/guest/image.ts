@@ -3,7 +3,7 @@ import { cache, type CacheInstance } from '../../connection/cache';
 import type { CacheRunItem } from '../../types';
 
 export const image = (() => {
-    let images: NodeListOf<HTMLImageElement> | null = null;
+    let images: HTMLImageElement[] = [];
     let c: CacheInstance | null = null;
 
     const urlCache: CacheRunItem[] = [];
@@ -20,9 +20,8 @@ export const image = (() => {
         loadedImage(src).then((img) => {
             el.width = img.naturalWidth;
             el.height = img.naturalHeight;
-            el.classList.remove('opacity-0');
             el.src = img.src;
-            img.remove();
+            el.dataset.loaded = 'true';
 
             progress.complete('image');
         });
@@ -53,18 +52,16 @@ export const image = (() => {
         }
     };
 
-    const hasDataSrc = (): boolean =>
-        images ? Array.from(images).some((i) => i.hasAttribute('data-src')) : false;
+    const hasDataSrc = (): boolean => images.some((i) => i.hasAttribute('data-src'));
 
     const load = async (): Promise<void> => {
-        if (!images || !c) {
+        if (images.length === 0 || !c) {
             return;
         }
-        const imgs = Array.from(images);
 
         const runGroup = async (filter: (el: HTMLImageElement) => boolean): Promise<void> => {
             urlCache.length = 0;
-            imgs.filter(filter).forEach((el) => (el.hasAttribute('data-src') ? getByFetch(el) : getByDefault(el)));
+            images.filter(filter).forEach((el) => (el.hasAttribute('data-src') ? getByFetch(el) : getByDefault(el)));
             await c!.run(urlCache, progress.getAbort());
         };
 
@@ -73,13 +70,19 @@ export const image = (() => {
     };
 
     const download = (blobUrl: string): void => {
-        void c?.download(blobUrl, `${window.location.hostname}_image_${Date.now()}`);
+        if (!c) {
+            c = cache('image').withForceCache();
+        }
+        void c.download(blobUrl, `${window.location.hostname}_image_${Date.now()}`);
     };
 
-    const init = () => {
+    /**
+     * Initializes the image preloader and Cache API pipeline for the provided image elements.
+     */
+    const init = (elements?: Iterable<HTMLImageElement> | null) => {
         c = cache('image').withForceCache();
-        images = document.querySelectorAll('img');
-        images.forEach(progress.add);
+        images = elements ? Array.from(elements) : [];
+        images.forEach(() => progress.add());
 
         return {
             load,
@@ -90,5 +93,6 @@ export const image = (() => {
 
     return {
         init,
+        download,
     };
 })();

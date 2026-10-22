@@ -1,8 +1,10 @@
 import type { BootstrapModalInstance, BootstrapTabInstance } from '../types';
 
 export const bs = (() => {
-    const modal = (id: string): BootstrapModalInstance => {
-        const el = document.getElementById(id);
+    /**
+     * Integrates with the external Bootstrap 5 Modal instance using a React element ref.
+     */
+    const modal = (el: HTMLElement | null): BootstrapModalInstance => {
         if (!el || !window.bootstrap?.Modal) {
             return {
                 show: () => {},
@@ -12,8 +14,7 @@ export const bs = (() => {
         return window.bootstrap.Modal.getOrCreateInstance(el);
     };
 
-    const tab = (id: string): BootstrapTabInstance => {
-        const el = document.getElementById(id);
+    const tab = (el: HTMLElement | null): BootstrapTabInstance => {
         if (!el || !window.bootstrap?.Tab) {
             return {
                 show: () => {},

@@ -1,5 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { guest } from '../app/guest/guest';
+import { image } from '../app/guest/image';
+import { audio } from '../app/guest/audio';
+import {
+    buildGoogleCalendarUrl,
+    useAudioStore,
+    useCountdown,
+    useDesktopSlideshow,
+    useGuestQueryName,
+    useOfflineStore,
+    useProgressStore,
+    useThemeStore,
+} from '../app/guest/useGuestInvitation';
 import { theme } from '../common/theme';
 
 export interface GuestInvitationProps {
@@ -9,11 +21,66 @@ export interface GuestInvitationProps {
     weddingDateDisplay?: string;
     weddingDateTimeDisplay?: string;
     ceremonyTimeDisplay?: string;
+    countdownTargetTime?: string;
     locationAddress?: string;
     googleMapsUrl?: string;
     videoSrc?: string;
+    audioSrc?: string;
+    enableConfetti?: boolean;
+    guestSalutation?: string;
     autoInit?: boolean;
 }
+
+const DESKTOP_SLIDE_SEEDS = [7, 8, 9] as const;
+
+const HEART_SVG_PATH =
+    'm8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143q.09.083.176.171a3 3 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15';
+
+interface AnimatedHeartSvgProps {
+    delayMs: number;
+    style: React.CSSProperties;
+}
+
+const AnimatedHeartSvg: React.FC<AnimatedHeartSvgProps> = ({ delayMs, style }) => {
+    const [isAnimated, setIsAnimated] = useState(false);
+
+    useEffect(() => {
+        const timerId = window.setTimeout(() => {
+            setIsAnimated(true);
+        }, delayMs);
+
+        return () => {
+            window.clearTimeout(timerId);
+        };
+    }, [delayMs]);
+
+    return (
+        <div className="position-absolute" style={style}>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                fill="currentColor"
+                className={isAnimated ? 'opacity-50 animate-love' : 'opacity-50'}
+                viewBox="0 0 16 16"
+            >
+                <path d={HEART_SVG_PATH} />
+            </svg>
+        </div>
+    );
+};
+
+interface WaveSeparatorProps {
+    pathD: string;
+}
+
+const WaveSeparator: React.FC<WaveSeparatorProps> = ({ pathD }) => (
+    <div className="svg-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="color-theme-svg no-gap-bottom">
+            <path fill="currentColor" fillOpacity="1" d={pathD} />
+        </svg>
+    </div>
+);
 
 export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
     coupleNames = 'Ahmed & Nermin',
@@ -22,41 +89,216 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
     weddingDateDisplay = 'Thursday, 8 October 2026',
     weddingDateTimeDisplay = 'Thursday, 8 October 2026 · 9:00 PM',
     ceremonyTimeDisplay = '9:00 PM - Until finished',
+    countdownTargetTime,
     locationAddress = 'Rotana High Class Village, Zifta-Tanta Road .',
     googleMapsUrl = 'https://maps.app.goo.gl/z9SuGTQF8qQdhhKm7?g_st=aw',
     videoSrc = './assets/video/265501_tiny.mp4',
+    audioSrc,
+    enableConfetti,
+    guestSalutation = 'Dear Mr./Mrs./Ms.',
     autoInit = false,
 }) => {
-    useEffect(() => {
-        if (autoInit) {
-            window.undangan = guest.init();
+    const guestState = useSyncExternalStore(guest.subscribe, guest.getSnapshot);
+    const progressState = useProgressStore();
+    const offlineState = useOfflineStore();
+    const themeState = useThemeStore();
+    const audioState = useAudioStore();
+
+    const effectiveTargetTime =
+        countdownTargetTime ??
+        (typeof document !== 'undefined' ? document.body.getAttribute('data-time') : null) ??
+        '2024-01-01 09:30:00';
+
+    const countdown = useCountdown(effectiveTargetTime);
+    const activeSlideIndex = useDesktopSlideshow(DESKTOP_SLIDE_SEEDS.length, guestState.isOpened);
+    const guestQueryName = useGuestQueryName();
+
+    const [areModalActionsVisible, setAreModalActionsVisible] = useState(true);
+    const [videoProgress, setVideoProgress] = useState<{
+        isLoading: boolean;
+        percent: number;
+        label: string;
+        errorText: string | null;
+    }>({
+        isLoading: Boolean(videoSrc),
+        percent: 0,
+        label: '',
+        errorText: null,
+    });
+
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const modalRef = useRef<HTMLDivElement | null>(null);
+    const imageRefs = useRef<Set<HTMLImageElement>>(new Set());
+    const sectionRefs = useRef<Set<HTMLElement>>(new Set());
+
+    const registerImageRef = useCallback((el: HTMLImageElement | null) => {
+        if (el) {
+            imageRefs.current.add(el);
         }
-    }, [autoInit]);
+    }, []);
+
+    const registerSectionRef = useCallback((el: HTMLElement | null) => {
+        if (el) {
+            sectionRefs.current.add(el);
+        }
+    }, []);
+
+    useEffect(() => {
+        guest.setModalElement(modalRef.current);
+        return () => {
+            guest.setModalElement(null);
+        };
+    }, []);
+
+    useEffect(() => {
+        const modalEl = modalRef.current;
+        if (!modalEl) {
+            return;
+        }
+
+        const handleModalHide = (): void => {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+        };
+
+        modalEl.addEventListener('hide.bs.modal', handleModalHide);
+        return () => {
+            modalEl.removeEventListener('hide.bs.modal', handleModalHide);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!autoInit) {
+            return;
+        }
+
+        const instance = guest.init({
+            images: imageRefs.current,
+            sections: sectionRefs.current,
+            modalElement: modalRef.current,
+            audioUrl: audioSrc,
+            enableConfetti,
+            videoOptions: {
+                videoEl: videoRef.current,
+                src: videoSrc,
+                onProgress: (percent, label) => {
+                    setVideoProgress({
+                        isLoading: true,
+                        percent,
+                        label,
+                        errorText: null,
+                    });
+                },
+                onReady: () => {
+                    setVideoProgress((prev) => ({
+                        ...prev,
+                        isLoading: false,
+                    }));
+                },
+                onError: (message) => {
+                    setVideoProgress((prev) => ({
+                        ...prev,
+                        errorText: message,
+                    }));
+                },
+            },
+        });
+
+        window.undangan = instance;
+
+        return () => {
+            instance.cleanup();
+        };
+    }, [autoInit, audioSrc, enableConfetti, videoSrc]);
+
+    useEffect(() => {
+        if (!offlineState.isOnline && audioState.isPlaying) {
+            audio.pause();
+        }
+    }, [offlineState.isOnline, audioState.isPlaying]);
+
+    const calendarUrl = useMemo(() => buildGoogleCalendarUrl('Asia/Jakarta'), []);
+
+    const handleSaveToCalendar = useCallback(() => {
+        window.open(calendarUrl, '_blank', 'noopener,noreferrer');
+    }, [calendarUrl]);
+
+    const handleOpenImageModal = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+        setAreModalActionsVisible(true);
+        guest.modal(e.currentTarget);
+    }, []);
+
+    const handleDownloadModalImage = useCallback(() => {
+        const src = guestState.selectedImage?.src;
+        if (src) {
+            image.download(src);
+        }
+    }, [guestState.selectedImage]);
+
+    const selectedImageSrc = guestState.selectedImage?.src ?? './assets/images/placeholder.webp';
 
     return (
         <>
+            {/* Declarative Network Status Banner */}
+            {offlineState.bannerState !== 'hidden' && (
+                <div className="fixed-top pe-none" style={{ opacity: 1, zIndex: 1057, transition: 'opacity 300ms ease' }}>
+                    <div className="d-flex justify-content-center mx-auto">
+                        <div
+                            className={`d-flex justify-content-center align-items-center rounded-pill my-2 ${
+                                offlineState.bannerState === 'offline' ? 'bg-danger' : 'bg-success'
+                            } shadow`}
+                        >
+                            <small
+                                className="text-center py-1 px-2 mx-1 mt-1 mb-0 text-white"
+                                style={{ fontSize: '0.8rem' }}
+                            >
+                                {offlineState.bannerState === 'offline' ? (
+                                    <>
+                                        <i className="fa-solid fa-ban me-2"></i>Koneksi tidak tersedia
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa-solid fa-cloud me-2"></i>Koneksi tersedia kembali
+                                    </>
+                                )}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Root Invitation */}
-            <div className="row m-0 p-0 opacity-0" id="root">
+            <div className={guestState.isOpened ? 'row m-0 p-0' : 'row m-0 p-0 opacity-0'} id="root">
                 {/* Desktop mode */}
                 <div className="sticky-top vh-100 d-none d-sm-block col-sm-5 col-md-6 col-lg-7 col-xl-8 col-xxl-9 overflow-y-hidden m-0 p-0">
                     <div className="position-relative bg-white-black d-flex justify-content-center align-items-center vh-100">
                         <div className="d-flex position-absolute w-100 h-100">
                             <div className="position-relative overflow-hidden vw-100">
-                                {[7, 8, 9].map((seed) => (
-                                    <div
-                                        key={seed}
-                                        className="position-absolute h-100 w-100 slide-desktop"
-                                        style={{ opacity: 0 }}
-                                    >
-                                        <img
-                                            src="./assets/images/placeholder.webp"
-                                            data-src={`https://picsum.photos/1000/1000?random=${seed}`}
-                                            alt="bg"
-                                            className="bg-cover-home"
-                                            style={{ maskImage: 'none', opacity: '30%' }}
-                                        />
-                                    </div>
-                                ))}
+                                {DESKTOP_SLIDE_SEEDS.map((seed, index) => {
+                                    const isActive = index === activeSlideIndex;
+                                    return (
+                                        <div
+                                            key={seed}
+                                            className={`position-absolute h-100 w-100 slide-desktop${
+                                                isActive ? ' slide-desktop-active' : ''
+                                            }`}
+                                            style={{
+                                                opacity: isActive ? 1 : 0,
+                                                transition: 'opacity 600ms ease, transform 10s linear',
+                                            }}
+                                        >
+                                            <img
+                                                ref={registerImageRef}
+                                                src="./assets/images/placeholder.webp"
+                                                data-src={`https://picsum.photos/1000/1000?random=${seed}`}
+                                                alt="bg"
+                                                className="bg-cover-home"
+                                                style={{ maskImage: 'none', opacity: '30%' }}
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -81,8 +323,13 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                         tabIndex={0}
                     >
                         {/* Home */}
-                        <section id="home" className="bg-light-dark position-relative overflow-hidden p-0 m-0">
+                        <section
+                            ref={registerSectionRef}
+                            id="home"
+                            className="bg-light-dark position-relative overflow-hidden p-0 m-0"
+                        >
                             <img
+                                ref={registerImageRef}
                                 src="./assets/images/placeholder.webp"
                                 data-src="./assets/images/3.jpeg"
                                 alt="bg"
@@ -98,10 +345,11 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                 </h1>
 
                                 <img
+                                    ref={registerImageRef}
                                     src="./assets/images/placeholder.webp"
                                     data-src="./assets/images/3.jpeg"
                                     alt="bg"
-                                    onClick={(e) => guest.modal(e.currentTarget)}
+                                    onClick={handleOpenImageModal}
                                     className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
                                 />
 
@@ -114,6 +362,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
 
                                 <button
                                     type="button"
+                                    onClick={handleSaveToCalendar}
                                     className="btn btn-outline-auto btn-sm shadow rounded-pill px-3 py-1"
                                     style={{ fontSize: '0.825rem' }}
                                 >
@@ -132,8 +381,10 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </div>
                         </section>
 
+                        <WaveSeparator pathD="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,165.3C672,160,768,96,864,96C960,96,1056,160,1152,154.7C1248,149,1344,75,1392,37.3L1440,0L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
+
                         {/* Bride */}
-                        <section className="bg-white-black text-center" id="bride">
+                        <section ref={registerSectionRef} className="bg-white-black text-center" id="bride">
                             <h2 className="font-esthetic py-4 m-0" style={{ fontSize: '2rem' }}>
                                 Peace, Mercy, and Blessings Be Upon You
                             </h2>
@@ -142,81 +393,118 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </p>
 
                             <div className="overflow-x-hidden pb-4">
-                                <div data-aos="fade-right" data-aos-duration="2000" className="pb-1">
-                                    <img
-                                        src="./assets/images/placeholder.webp"
-                                        data-src="./assets/images/2.jpeg"
-                                        alt="groom"
-                                        onClick={(e) => guest.modal(e.currentTarget)}
-                                        className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
-                                    />
-                                    <h2 className="font-esthetic m-0" style={{ fontSize: '2.125rem' }}>
-                                        {groomName}
-                                    </h2>
+                                <div className="position-relative">
+                                    <AnimatedHeartSvg delayMs={500} style={{ top: '0%', right: '5%' }} />
+
+                                    <div data-aos="fade-right" data-aos-duration="2000" className="pb-1">
+                                        <img
+                                            ref={registerImageRef}
+                                            src="./assets/images/placeholder.webp"
+                                            data-src="./assets/images/2.jpeg"
+                                            alt="groom"
+                                            onClick={handleOpenImageModal}
+                                            className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
+                                        />
+                                        <h2 className="font-esthetic m-0" style={{ fontSize: '2.125rem' }}>
+                                            {groomName}
+                                        </h2>
+                                    </div>
+
+                                    <AnimatedHeartSvg delayMs={2000} style={{ top: '90%', left: '5%' }} />
                                 </div>
 
                                 <h2 className="font-esthetic mt-4" style={{ fontSize: '4.5rem' }}>
                                     &amp;
                                 </h2>
 
-                                <div data-aos="fade-left" data-aos-duration="2000" className="pb-1">
-                                    <img
-                                        src="./assets/images/placeholder.webp"
-                                        data-src="./assets/images/1.jpeg"
-                                        alt="bride"
-                                        onClick={(e) => guest.modal(e.currentTarget)}
-                                        className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
-                                    />
-                                    <h2 className="font-esthetic m-0" style={{ fontSize: '2.125rem' }}>
-                                        {brideName}
-                                    </h2>
+                                <div className="position-relative">
+                                    <AnimatedHeartSvg delayMs={3000} style={{ top: '0%', right: '5%' }} />
+
+                                    <div data-aos="fade-left" data-aos-duration="2000" className="pb-1">
+                                        <img
+                                            ref={registerImageRef}
+                                            src="./assets/images/placeholder.webp"
+                                            data-src="./assets/images/1.jpeg"
+                                            alt="bride"
+                                            onClick={handleOpenImageModal}
+                                            className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
+                                        />
+                                        <h2 className="font-esthetic m-0" style={{ fontSize: '2.125rem' }}>
+                                            {brideName}
+                                        </h2>
+                                    </div>
+
+                                    <AnimatedHeartSvg delayMs={2500} style={{ top: '90%', left: '5%' }} />
                                 </div>
                             </div>
                         </section>
 
+                        <WaveSeparator pathD="M0,192L40,181.3C80,171,160,149,240,149.3C320,149,400,171,480,165.3C560,160,640,128,720,128C800,128,880,160,960,186.7C1040,213,1120,235,1200,218.7C1280,203,1360,149,1400,122.7L1440,96L1440,0L1400,0C1360,0,1280,0,1200,0C1120,0,1040,0,960,0C880,0,800,0,720,0C640,0,560,0,480,0C400,0,320,0,240,0C160,0,80,0,40,0L0,0Z" />
+
                         {/* Love Story */}
-                        <section className="bg-light-dark pt-2 pb-4">
+                        <section ref={registerSectionRef} className="bg-light-dark pt-2 pb-4">
                             <div className="container">
                                 <div className="bg-theme-auto rounded-5 shadow p-3">
                                     <h2 className="font-esthetic text-center py-2 mb-2" style={{ fontSize: '2.125rem' }}>
                                         Our Love Story
                                     </h2>
 
-                                    <div
-                                        id="video-love-stroy"
-                                        className="position-relative rounded-4 mb-2 pb-0"
-                                        data-src={videoSrc}
-                                        data-vid-class="w-100 rounded-4 shadow-sm m-0 p-0"
-                                    >
+                                    {videoSrc && (
                                         <div
-                                            className="position-absolute d-flex flex-column justify-content-center align-items-center top-50 start-50 translate-middle w-100 h-100 bg-overlay-auto rounded-4 z-3"
-                                            id="video-love-stroy-loading"
+                                            id="video-love-stroy"
+                                            className="position-relative rounded-4 mb-2 pb-0"
+                                            data-src={videoSrc}
                                         >
-                                            <div
-                                                className="progress w-25"
-                                                role="progressbar"
-                                                style={{ height: '0.5rem' }}
-                                                aria-label="progress bar"
-                                            >
+                                            <video
+                                                ref={videoRef}
+                                                data-src={videoSrc}
+                                                className="w-100 rounded-4 shadow-sm m-0 p-0"
+                                                loop
+                                                muted
+                                                playsInline
+                                            />
+
+                                            {videoProgress.isLoading && (
                                                 <div
-                                                    className="progress-bar"
-                                                    id="progress-bar-video-love-stroy"
-                                                    style={{ width: '0%' }}
-                                                ></div>
-                                            </div>
-                                            <small
-                                                className="mt-1 text-theme-auto bg-theme-auto py-0 px-2 rounded-4"
-                                                id="progress-info-video-love-stroy"
-                                                style={{ fontSize: '0.7rem' }}
-                                            ></small>
+                                                    className="position-absolute d-flex flex-column justify-content-center align-items-center top-50 start-50 translate-middle w-100 h-100 bg-overlay-auto rounded-4 z-3"
+                                                    id="video-love-stroy-loading"
+                                                >
+                                                    <div
+                                                        className="progress w-25"
+                                                        role="progressbar"
+                                                        style={{ height: '0.5rem' }}
+                                                        aria-label="progress bar"
+                                                    >
+                                                        <div
+                                                            className="progress-bar"
+                                                            id="progress-bar-video-love-stroy"
+                                                            style={{
+                                                                width: `${videoProgress.percent}%`,
+                                                                backgroundColor: videoProgress.errorText
+                                                                    ? 'red'
+                                                                    : undefined,
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                    <small
+                                                        className="mt-1 text-theme-auto bg-theme-auto py-0 px-2 rounded-4"
+                                                        id="progress-info-video-love-stroy"
+                                                        style={{ fontSize: '0.7rem' }}
+                                                    >
+                                                        {videoProgress.errorText ?? videoProgress.label}
+                                                    </small>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         </section>
 
+                        <WaveSeparator pathD="M0,96L30,106.7C60,117,120,139,180,154.7C240,171,300,181,360,186.7C420,192,480,192,540,181.3C600,171,660,149,720,154.7C780,160,840,192,900,208C960,224,1020,224,1080,208C1140,192,1200,160,1260,138.7C1320,117,1380,107,1410,101.3L1440,96L1440,320L1410,320C1380,320,1320,320,1260,320C1200,320,1140,320,1080,320C1020,320,960,320,900,320C840,320,780,320,720,320C660,320,600,320,540,320C480,320,420,320,360,320C300,320,240,320,180,320C120,320,60,320,30,320L0,320Z" />
+
                         {/* Wedding Date */}
-                        <section className="bg-white-black pb-2" id="wedding-date">
+                        <section ref={registerSectionRef} className="bg-white-black pb-2" id="wedding-date">
                             <div className="container text-center">
                                 <h2 className="font-esthetic py-4 m-0" style={{ fontSize: '2.25rem' }}>
                                     Our Special Day
@@ -226,25 +514,25 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                     <div className="row justify-content-center">
                                         <div className="col-3 p-1">
                                             <p className="d-inline m-0 p-0" style={{ fontSize: '1.25rem' }} id="day">
-                                                0
+                                                {countdown.days}
                                             </p>
                                             <small className="ms-1 me-0 my-0 p-0 d-inline">Days</small>
                                         </div>
                                         <div className="col-3 p-1">
                                             <p className="d-inline m-0 p-0" style={{ fontSize: '1.25rem' }} id="hour">
-                                                0
+                                                {countdown.hours}
                                             </p>
                                             <small className="ms-1 me-0 my-0 p-0 d-inline">Hours</small>
                                         </div>
                                         <div className="col-3 p-1">
                                             <p className="d-inline m-0 p-0" style={{ fontSize: '1.25rem' }} id="minute">
-                                                0
+                                                {countdown.minutes}
                                             </p>
                                             <small className="ms-1 me-0 my-0 p-0 d-inline">Minutes</small>
                                         </div>
                                         <div className="col-3 p-1">
                                             <p className="d-inline m-0 p-0" style={{ fontSize: '1.25rem' }} id="second">
-                                                0
+                                                {countdown.seconds}
                                             </p>
                                             <small className="ms-1 me-0 my-0 p-0 d-inline">Seconds</small>
                                         </div>
@@ -254,6 +542,10 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                 <p className="py-2 m-0" style={{ fontSize: '0.95rem' }}>
                                     Seeking the mercy and blessing of Allah, God willing, we will hold our wedding on:
                                 </p>
+
+                                <div className="position-relative">
+                                    <AnimatedHeartSvg delayMs={3000} style={{ top: '0%', right: '5%' }} />
+                                </div>
 
                                 <div className="overflow-x-hidden">
                                     <div className="py-2" data-aos="fade-right" data-aos-duration="1500">
@@ -282,7 +574,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                         </section>
 
                         {/* End Of Invitation */}
-                        <section className="bg-white-black py-2 no-gap-bottom">
+                        <section ref={registerSectionRef} className="bg-white-black py-2 no-gap-bottom">
                             <div className="container text-center">
                                 <p className="pb-2 pt-4" style={{ fontSize: '0.95rem' }}>
                                     Thank you for your attention and your blessings, which are a great joy and honor to
@@ -329,37 +621,57 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
             </div>
 
             {/* Welcome Page */}
-            <div className="loading-page bg-white-black" id="welcome" style={{ opacity: 0 }}>
-                <div className="d-flex justify-content-center align-items-center vh-100 overflow-y-auto">
-                    <div className="d-flex flex-column text-center">
-                        <h2 className="font-esthetic mb-4" style={{ fontSize: '2.25rem' }}>
-                            The Wedding Of
-                        </h2>
+            {!guestState.isOpened && (
+                <div
+                    className="loading-page bg-white-black"
+                    id="welcome"
+                    style={{
+                        opacity: !autoInit || guestState.isBooted ? 1 : 0,
+                        transition: 'opacity 400ms ease',
+                    }}
+                >
+                    <div className="d-flex justify-content-center align-items-center vh-100 overflow-y-auto">
+                        <div className="d-flex flex-column text-center">
+                            <h2 className="font-esthetic mb-4" style={{ fontSize: '2.25rem' }}>
+                                The Wedding Of
+                            </h2>
 
-                        <img
-                            src="./assets/images/placeholder.webp"
-                            data-src="./assets/images/3.jpeg"
-                            alt="background"
-                            className="img-center-crop rounded-circle border border-3 border-light shadow mb-4 mx-auto"
-                        />
+                            <img
+                                ref={registerImageRef}
+                                src="./assets/images/placeholder.webp"
+                                data-src="./assets/images/3.jpeg"
+                                alt="background"
+                                className="img-center-crop rounded-circle border border-3 border-light shadow mb-4 mx-auto"
+                            />
 
-                        <h2 className="font-esthetic mb-4" style={{ fontSize: '2.25rem' }}>
-                            {coupleNames}
-                        </h2>
-                        <div id="guest-name" data-message="Dear Mr./Mrs./Ms."></div>
+                            <h2 className="font-esthetic mb-4" style={{ fontSize: '2.25rem' }}>
+                                {coupleNames}
+                            </h2>
+                            <div id="guest-name" data-message={guestSalutation}>
+                                {guestQueryName && (
+                                    <div className="m-2">
+                                        <small className="mt-0 mb-1 mx-0 p-0">{guestSalutation}</small>
+                                        <p className="m-0 p-0" style={{ fontSize: '1.25rem' }}>
+                                            {guestQueryName}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
 
-                        <button
-                            type="button"
-                            className="btn btn-light shadow rounded-4 mt-3 mx-auto"
-                            onClick={(e) => guest.open(e.currentTarget)}
-                        >
-                            <i className="fa-solid fa-envelope-open fa-bounce me-2"></i>Open Invitation
-                        </button>
+                            <button
+                                type="button"
+                                disabled={guestState.isOpened}
+                                className="btn btn-light shadow rounded-4 mt-3 mx-auto"
+                                onClick={(e) => guest.open(e.currentTarget)}
+                            >
+                                <i className="fa-solid fa-envelope-open fa-bounce me-2"></i>Open Invitation
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* Button Group */}
+            {/* Floating Action Button Group */}
             <div
                 className="d-flex position-fixed flex-column"
                 style={{ bottom: '10vh', right: '2vh', zIndex: 1030 }}
@@ -367,7 +679,9 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                 <button
                     type="button"
                     id="button-theme"
-                    className="btn bg-light-dark border btn-sm rounded-circle d-none btn-transparent shadow-sm mt-3"
+                    className={`btn bg-light-dark border btn-sm rounded-circle ${
+                        guestState.isOpened && themeState.isAuto ? '' : 'd-none '
+                    }btn-transparent shadow-sm mt-3`}
                     aria-label="Change theme"
                     onClick={() => theme.change()}
                 >
@@ -377,53 +691,94 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                 <button
                     type="button"
                     id="button-music"
-                    className="btn bg-light-dark border btn-sm rounded-circle d-none btn-transparent shadow-sm mt-3"
+                    disabled={audioState.isLoading || !offlineState.isOnline}
+                    className={`btn bg-light-dark border btn-sm rounded-circle ${
+                        guestState.isOpened ? '' : 'd-none '
+                    }${!offlineState.isOnline ? 'disabled ' : ''}btn-transparent shadow-sm mt-3`}
                     aria-label="Change audio"
-                    data-offline-disabled="false"
+                    data-offline-disabled={offlineState.isOnline ? 'false' : 'true'}
+                    onClick={() => void audio.toggle()}
                 >
-                    <i className="fa-solid fa-circle-pause spin-button"></i>
+                    <i
+                        className={
+                            audioState.isPlaying
+                                ? 'fa-solid fa-circle-pause spin-button'
+                                : 'fa-solid fa-circle-play'
+                        }
+                    ></i>
                 </button>
             </div>
 
             {/* Loading Page */}
-            <div className="loading-page bg-white-black" id="loading" style={{ opacity: 1 }}>
-                <div className="d-flex justify-content-center align-items-center vh-100 overflow-y-auto">
-                    <div className="d-flex flex-column width-loading text-center">
-                        <img
-                            src="./assets/images/placeholder.webp"
-                            data-src="./assets/images/icon-192x192.png"
-                            fetchPriority="high"
-                            className="img-fluid mb-3 mx-auto object-fit-cover opacity-0"
-                            alt="icon"
-                            style={{ width: '3.5rem', height: '3.5rem' }}
-                        />
-                        <div
-                            className="progress"
-                            role="progressbar"
-                            style={{ height: '0.5rem' }}
-                            aria-label="progress bar"
-                        >
-                            <div className="progress-bar" id="progress-bar" style={{ width: '0%' }}></div>
+            {!guestState.isBooted && (
+                <div className="loading-page bg-white-black" id="loading" style={{ opacity: 1 }}>
+                    <div className="d-flex justify-content-center align-items-center vh-100 overflow-y-auto">
+                        <div className="d-flex flex-column width-loading text-center">
+                            <img
+                                ref={registerImageRef}
+                                src="./assets/images/placeholder.webp"
+                                data-src="./assets/images/icon-192x192.png"
+                                fetchPriority="high"
+                                className="img-fluid mb-3 mx-auto object-fit-cover"
+                                alt="icon"
+                                style={{ width: '3.5rem', height: '3.5rem' }}
+                            />
+                            <div
+                                className="progress"
+                                role="progressbar"
+                                style={{ height: '0.5rem' }}
+                                aria-label="progress bar"
+                            >
+                                <div
+                                    className="progress-bar"
+                                    id="progress-bar"
+                                    style={{
+                                        width: `${progressState.percentage}%`,
+                                        backgroundColor: progressState.isError ? 'red' : undefined,
+                                    }}
+                                ></div>
+                            </div>
+                            <small
+                                className={`${progressState.isVisible ? '' : 'd-none '}mt-1 text-theme-auto`}
+                                id="progress-info"
+                                style={{ fontSize: '0.8rem' }}
+                            >
+                                {progressState.infoText}
+                            </small>
+                            <noscript>
+                                <small className="mt-1 text-danger">
+                                    Sorry, this invitation requires javascript to work
+                                </small>
+                            </noscript>
                         </div>
-                        <small className="d-none mt-1 text-theme-auto" id="progress-info" style={{ fontSize: '0.8rem' }}>
-                            Booting application...
-                        </small>
+                    </div>
+                    <div className="text-center position-fixed w-100" style={{ bottom: '8%', left: 0 }}>
+                        <div className="d-flex flex-column">
+                            <small className="text-secondary">from</small>
+                            <small className="text-theme-auto">
+                                <i className="fa-brands fa-github me-1"></i>dewanakl
+                            </small>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Modal Image */}
-            <div className="modal fade" id="modal-image" tabIndex={-1} aria-hidden="true">
+            <div ref={modalRef} className="modal fade" id="modal-image" tabIndex={-1} aria-hidden="true">
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content rounded-4 border border-0">
                         <div className="modal-body p-0">
-                            <div className="d-flex position-absolute top-0 end-0">
+                            <div
+                                className={`${
+                                    areModalActionsVisible ? 'd-flex' : 'd-none'
+                                } position-absolute top-0 end-0`}
+                            >
                                 <a
                                     className="btn d-flex justify-content-center align-items-center bg-overlay-auto p-2 m-1 rounded-circle border shadow-sm z-1"
                                     role="button"
                                     target="_blank"
                                     rel="noreferrer"
-                                    href="./assets/images/placeholder.webp"
+                                    href={selectedImageSrc}
                                     id="button-modal-click"
                                 >
                                     <i
@@ -433,6 +788,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                 </a>
                                 <button
                                     type="button"
+                                    onClick={handleDownloadModalImage}
+                                    data-src={selectedImageSrc}
                                     className="btn d-flex justify-content-center align-items-center bg-overlay-auto p-2 m-1 rounded-circle border shadow-sm z-1"
                                     id="button-modal-download"
                                 >
@@ -448,7 +805,10 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </div>
 
                             <img
-                                src="./assets/images/placeholder.webp"
+                                src={selectedImageSrc}
+                                width={guestState.selectedImage?.width}
+                                height={guestState.selectedImage?.height}
+                                onClick={() => setAreModalActionsVisible((prev) => !prev)}
                                 className="img-fluid w-100 rounded-4 cursor-pointer"
                                 alt="image"
                                 id="show-modal-image"

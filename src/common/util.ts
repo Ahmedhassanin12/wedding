@@ -1,9 +1,7 @@
-import type { DisableRestoreHandle, NotifyActions } from '../types';
+import type { NotifyActions } from '../types';
 
 export const util = (() => {
-    const loader = '<span class="spinner-border spinner-border-sm my-0 ms-0 me-1 p-0" style="height: 0.8rem; width: 0.8rem;"></span>';
-
-    const listsMarkDown: ReadonlyArray< readonly [string, string]> = [
+    const listsMarkDown: ReadonlyArray<readonly [string, string]> = [
         ['*', '<strong class="text-theme-auto">$1</strong>'],
         ['_', '<em class="text-theme-auto">$1</em>'],
         ['~', '<del class="text-theme-auto">$1</del>'],
@@ -61,49 +59,27 @@ export const util = (() => {
 
     const ask = (message: string): boolean => window.confirm(`🟦 ${message}`);
 
-    const safeInnerHTML = <T extends HTMLElement>(el: T, html: string): T => {
-        el.replaceChildren(document.createRange().createContextualFragment(html));
-        return el;
-    };
-
-    const changeOpacity = (el: HTMLElement, isUp: boolean, step = 0.05): Promise<HTMLElement> =>
-        new Promise((res) => {
-            let op = parseFloat(el.style.opacity || (isUp ? '0' : '1'));
-            if (Number.isNaN(op)) {
-                op = isUp ? 0 : 1;
-            }
-            const target = isUp ? 1 : 0;
-
-            const animate = (): void => {
-                op += isUp ? step : -step;
-                op = Math.max(0, Math.min(1, op));
-                el.style.opacity = op.toFixed(2);
-
-                if ((isUp && op >= target) || (!isUp && op <= target)) {
-                    el.style.opacity = target.toString();
-                    res(el);
-                } else {
-                    requestAnimationFrame(animate);
-                }
-            };
-
-            requestAnimationFrame(animate);
-        });
-
-    const timeOut = (callback: () => void, delay = 0): void => {
-        let clear: ReturnType<typeof setTimeout> | null = null;
-        const c = (): void => {
+    const timeOut = (callback: () => void, delay = 0): (() => void) => {
+        let clear: ReturnType<typeof setTimeout> | null = setTimeout(() => {
             callback();
             if (clear !== null) {
                 clearTimeout(clear);
                 clear = null;
             }
-        };
+        }, delay);
 
-        clear = setTimeout(c, delay);
+        return (): void => {
+            if (clear !== null) {
+                clearTimeout(clear);
+                clear = null;
+            }
+        };
     };
 
-    const debounce = <T extends (...args: any[]) => void>(callback: T, delay = 100): ((...args: Parameters<T>) => void) => {
+    const debounce = <T extends (...args: any[]) => void>(
+        callback: T,
+        delay = 100,
+    ): ((...args: Parameters<T>) => void) => {
         let timeout: ReturnType<typeof setTimeout> | null = null;
         return (...args: Parameters<T>): void => {
             if (timeout !== null) {
@@ -111,88 +87,6 @@ export const util = (() => {
             }
             timeout = setTimeout(() => callback(...args), delay);
         };
-    };
-
-    const disableButton = (
-        button: HTMLButtonElement | HTMLElement,
-        message = 'Loading',
-        replace = false,
-    ): DisableRestoreHandle => {
-        if ('disabled' in button) {
-            button.disabled = true;
-        }
-
-        const tmp = button.innerHTML;
-        safeInnerHTML(button, replace ? message : loader + message);
-
-        return {
-            restore: (disabled = false): void => {
-                button.innerHTML = tmp;
-                if ('disabled' in button) {
-                    button.disabled = disabled;
-                }
-            },
-        };
-    };
-
-    const disableCheckbox = (checkbox: HTMLInputElement | HTMLElement): DisableRestoreHandle => {
-        if ('disabled' in checkbox) {
-            checkbox.disabled = true;
-        }
-
-        const label = document.querySelector<HTMLElement>(`label[for="${checkbox.id}"]`);
-        const tmp = label ? label.innerHTML : '';
-        if (label) {
-            safeInnerHTML(label, loader + tmp);
-        }
-
-        return {
-            restore: (): void => {
-                if (label) {
-                    label.innerHTML = tmp;
-                }
-                if ('disabled' in checkbox) {
-                    checkbox.disabled = false;
-                }
-            },
-        };
-    };
-
-    const copy = async (
-        button: HTMLButtonElement | HTMLElement,
-        message: string | null = null,
-        timeout = 1500,
-    ): Promise<void> => {
-        const data = button.getAttribute('data-copy');
-
-        if (!data || data.length === 0) {
-            notify('Nothing to copy').warning();
-            return;
-        }
-
-        if ('disabled' in button) {
-            button.disabled = true;
-        }
-
-        try {
-            await navigator.clipboard.writeText(data);
-        } catch {
-            if ('disabled' in button) {
-                button.disabled = false;
-            }
-            notify('Failed to copy').error();
-            return;
-        }
-
-        const tmp = button.innerHTML;
-        safeInnerHTML(button, message ? message : '<i class="fa-solid fa-check"></i>');
-
-        timeOut(() => {
-            if ('disabled' in button) {
-                button.disabled = false;
-            }
-            button.innerHTML = tmp;
-        }, timeout);
     };
 
     const base64Encode = (str: string): string => {
@@ -248,20 +142,14 @@ export const util = (() => {
     };
 
     return {
-        loader,
         ask,
-        copy,
         notify,
         timeOut,
         debounce,
         escapeHtml,
         base64Encode,
         base64Decode,
-        disableButton,
-        disableCheckbox,
-        safeInnerHTML,
         parseUserAgent,
-        changeOpacity,
         getGMTOffset,
         convertMarkdownToHTML,
     };

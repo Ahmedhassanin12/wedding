@@ -3,7 +3,6 @@ import { util } from '../common/util';
 
 describe('util module', () => {
     beforeEach(() => {
-        document.body.innerHTML = '';
         vi.restoreAllMocks();
     });
 
@@ -47,34 +46,14 @@ describe('util module', () => {
         expect(util.getGMTOffset('Asia/Jakarta')).toBe('GMT+7');
     });
 
-    it('disables and restores buttons and checkboxes', () => {
-        const btn = document.createElement('button');
-        btn.innerHTML = 'Send';
-        document.body.appendChild(btn);
-
-        const handle = util.disableButton(btn, 'Saving');
-        expect(btn.disabled).toBe(true);
-        expect(btn.innerHTML).toContain('Saving');
-
-        handle.restore(false);
-        expect(btn.disabled).toBe(false);
-        expect(btn.innerHTML).toBe('Send');
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = 'chk-test';
-        const label = document.createElement('label');
-        label.htmlFor = 'chk-test';
-        label.innerHTML = 'Filter';
-        document.body.append(checkbox, label);
-
-        const chkHandle = util.disableCheckbox(checkbox);
-        expect(checkbox.disabled).toBe(true);
-        expect(label.innerHTML).toContain('spinner-border');
-
-        chkHandle.restore();
-        expect(checkbox.disabled).toBe(false);
-        expect(label.innerHTML).toBe('Filter');
+    it('schedules and cancels timeouts cleanly via util.timeOut', () => {
+        vi.useFakeTimers();
+        const fn = vi.fn();
+        const cancel = util.timeOut(fn, 500);
+        cancel();
+        vi.advanceTimersByTime(600);
+        expect(fn).not.toHaveBeenCalled();
+        vi.useRealTimers();
     });
 
     it('triggers notify and ask dialogs with appropriate prefixes', () => {

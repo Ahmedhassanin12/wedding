@@ -2,18 +2,88 @@ import { progress } from './progress';
 import { util } from '../../common/util';
 import { cache } from '../../connection/cache';
 
-export const audio = (() => {
-    const statePlay = '<i class="fa-solid fa-circle-pause spin-button"></i>';
-    const statePause = '<i class="fa-solid fa-circle-play"></i>';
+export interface AudioSnapshot {
+    isReady: boolean;
+    isPlaying: boolean;
+    isLoading: boolean;
+}
 
-    const load = async (playOnOpen = true): Promise<void> => {
-        const url = document.body.getAttribute('data-audio');
+export const audio = (() => {
+    let audioEl: HTMLAudioElement | null = null;
+    let isReady = false;
+    let isPlaying = false;
+    let isLoading = false;
+    const listeners = new Set<() => void>();
+
+    let currentSnapshot: AudioSnapshot = {
+        isReady: false,
+        isPlaying: false,
+        isLoading: false,
+    };
+
+    const emitChange = (): void => {
+        currentSnapshot = {
+            isReady,
+            isPlaying,
+            isLoading,
+        };
+        listeners.forEach((listener) => listener());
+    };
+
+    const subscribe = (listener: () => void): (() => void) => {
+        listeners.add(listener);
+        return () => {
+            listeners.delete(listener);
+        };
+    };
+
+    const getSnapshot = (): AudioSnapshot => currentSnapshot;
+
+    const play = async (): Promise<void> => {
+        if (!navigator.onLine || !audioEl) {
+            return;
+        }
+
+        isLoading = true;
+        emitChange();
+
+        try {
+            await audioEl.play();
+            isPlaying = true;
+            isLoading = false;
+            emitChange();
+        } catch (err: unknown) {
+            isPlaying = false;
+            isLoading = false;
+            emitChange();
+            util.notify(err).error();
+        }
+    };
+
+    const pause = (): void => {
+        isPlaying = false;
+        isLoading = false;
+        audioEl?.pause();
+        emitChange();
+    };
+
+    const toggle = async (): Promise<void> => {
+        if (isPlaying) {
+            pause();
+        } else {
+            await play();
+        }
+    };
+
+    /**
+     * Loads and caches the audio source into an HTMLAudioElement instance.
+     */
+    const load = async (audioUrl?: string | null): Promise<void> => {
+        const url = audioUrl ?? document.body.getAttribute('data-audio');
         if (!url) {
             progress.complete('audio', true);
             return;
         }
-
-        let audioEl: HTMLAudioElement | null = null;
 
         try {
             audioEl = new Audio(await cache('audio').withForceCache().get(url, progress.getAbort()));
@@ -21,62 +91,36 @@ export const audio = (() => {
             audioEl.muted = false;
             audioEl.autoplay = false;
             audioEl.controls = false;
+            isReady = true;
+            emitChange();
 
             progress.complete('audio');
         } catch {
             progress.invalid('audio');
-            return;
         }
-
-        let isPlay = false;
-        const music = document.getElementById('button-music') as HTMLButtonElement | null;
-
-        const play = async (): Promise<void> => {
-            if (!navigator.onLine || !music || !audioEl) {
-                return;
-            }
-
-            music.disabled = true;
-            try {
-                await audioEl.play();
-                isPlay = true;
-                music.disabled = false;
-                music.innerHTML = statePlay;
-            } catch (err: unknown) {
-                isPlay = false;
-                util.notify(err).error();
-            }
-        };
-
-        const pause = (): void => {
-            isPlay = false;
-            audioEl?.pause();
-            if (music) {
-                music.innerHTML = statePause;
-            }
-        };
-
-        document.addEventListener('undangan.open', () => {
-            music?.classList.remove('d-none');
-
-            if (playOnOpen) {
-                void play();
-            }
-        });
-
-        music?.addEventListener('offline', pause);
-        music?.addEventListener('click', () => (isPlay ? pause() : void play()));
     };
 
     const init = () => {
         progress.add();
+        isReady = false;
+        isPlaying = false;
+        isLoading = false;
+        emitChange();
 
         return {
             load,
+            play,
+            pause,
+            toggle,
         };
     };
 
     return {
         init,
+        play,
+        pause,
+        toggle,
+        subscribe,
+        getSnapshot,
     };
 })();
