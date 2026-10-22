@@ -1,5 +1,11 @@
 import { createStore, useStore } from '../state/store';
 
+export type InvitationDesignId =
+    | 'classic-wave'
+    | 'royal-filigree'
+    | 'crimson-velvet'
+    | 'botanical-editorial';
+
 export interface DesktopSlideConfig {
     readonly id: string;
     readonly src: string;
@@ -45,6 +51,9 @@ export interface ThemePaletteConfig {
 
 export interface PresentationConfig {
     readonly guestSalutation: string;
+    readonly verseText: string;
+    readonly verseSource: string;
+    readonly celebrationHeading: string;
     readonly enableConfetti: boolean;
     readonly enableAos: boolean;
     readonly enableAdditionalFonts: boolean;
@@ -57,6 +66,11 @@ export interface PresentationConfig {
     readonly confettiTapColors: ReadonlyArray<string>;
     readonly themePalette: ThemePaletteConfig;
     readonly footerAttribution: string;
+}
+
+export interface DesignSystemConfig {
+    readonly defaultDesignId: InvitationDesignId;
+    readonly enableDesignStudio: boolean;
 }
 
 export interface FontAssetConfig {
@@ -85,6 +99,7 @@ export interface InvitationConfig {
     readonly event: EventConfig;
     readonly media: MediaConfig;
     readonly presentation: PresentationConfig;
+    readonly design: DesignSystemConfig;
     readonly network: NetworkAndCacheConfig;
 }
 
@@ -102,6 +117,16 @@ export interface ConfigValidationResult {
     readonly valid: boolean;
     readonly errors: string[];
 }
+
+export const VALID_DESIGN_IDS: ReadonlyArray<InvitationDesignId> = [
+    'classic-wave',
+    'royal-filigree',
+    'crimson-velvet',
+    'botanical-editorial',
+];
+
+export const isInvitationDesignId = (value: unknown): value is InvitationDesignId =>
+    typeof value === 'string' && (VALID_DESIGN_IDS as ReadonlyArray<string>).includes(value);
 
 export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
     couple: {
@@ -139,6 +164,10 @@ export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
     },
     presentation: {
         guestSalutation: 'Dear Mr./Mrs./Ms.',
+        verseText:
+            '"And among His signs is that He created for you mates from among yourselves, that you may find tranquility in them, and He placed between you affection and mercy. Indeed in that are signs for a people who reflect."',
+        verseSource: 'SURAH AR-RUM — 30:21',
+        celebrationHeading: 'The celebration begins.',
         enableConfetti: true,
         enableAos: true,
         enableAdditionalFonts: true,
@@ -160,6 +189,10 @@ export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
             darkColors: ['#000000', '#212529'],
         },
         footerAttribution: 'dewanakl',
+    },
+    design: {
+        defaultDesignId: 'royal-filigree',
+        enableDesignStudio: true,
     },
     network: {
         defaultCacheTtlMs: 1000 * 60 * 60 * 6,
@@ -203,6 +236,9 @@ export const validateInvitationConfig = (config: InvitationConfig): ConfigValida
     if (config.presentation.slideshowIntervalMs <= 0) {
         errors.push('presentation.slideshowIntervalMs must be greater than 0');
     }
+    if (!isInvitationDesignId(config.design.defaultDesignId)) {
+        errors.push(`design.defaultDesignId is not a registered design: "${String(config.design.defaultDesignId)}"`);
+    }
     if (config.network.defaultCacheTtlMs <= 0) {
         errors.push('network.defaultCacheTtlMs must be greater than 0');
     }
@@ -241,6 +277,10 @@ const mergeInvitationConfig = (
             ...(overrides.presentation?.themePalette ?? {}),
         },
     },
+    design: {
+        ...base.design,
+        ...(overrides.design ?? {}),
+    },
     network: {
         ...base.network,
         ...(overrides.network ?? {}),
@@ -252,7 +292,7 @@ const mergeInvitationConfig = (
 });
 
 /**
- * Reads optional HTML `data-*` overrides from `document.body` (`data-audio`, `data-confetti`, `data-time`).
+ * Reads optional HTML `data-*` overrides from `document.body` (`data-audio`, `data-confetti`, `data-time`, `data-design`).
  */
 export const readDomConfigOverrides = (): DeepPartial<InvitationConfig> => {
     if (typeof document === 'undefined' || !document.body) {
@@ -262,6 +302,7 @@ export const readDomConfigOverrides = (): DeepPartial<InvitationConfig> => {
     const dataAudio = document.body.getAttribute('data-audio');
     const dataConfetti = document.body.getAttribute('data-confetti');
     const dataTime = document.body.getAttribute('data-time');
+    const dataDesign = document.body.getAttribute('data-design');
 
     const overrides: DeepPartial<InvitationConfig> = {};
 
@@ -273,6 +314,9 @@ export const readDomConfigOverrides = (): DeepPartial<InvitationConfig> => {
     }
     if (dataTime !== null && dataTime.trim().length > 0) {
         overrides.event = { countdownTargetTime: dataTime.trim() };
+    }
+    if (isInvitationDesignId(dataDesign)) {
+        overrides.design = { defaultDesignId: dataDesign };
     }
 
     return overrides;
@@ -297,7 +341,7 @@ export const invitationConfig = {
         return merged;
     },
     /**
-     * Synchronizes configuration with `document.body` data attributes (`data-audio`, `data-confetti`, `data-time`).
+     * Synchronizes configuration with `document.body` data attributes (`data-audio`, `data-confetti`, `data-time`, `data-design`).
      */
     syncFromDom: (): InvitationConfig => {
         const domOverrides = readDomConfigOverrides();

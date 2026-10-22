@@ -1,0 +1,128 @@
+import type React from 'react';
+import type {
+    DesignTokens,
+    InvitationDesignId,
+    TypographyPreset,
+    TypographyPresetId,
+} from './types';
+
+export const TYPOGRAPHY_PRESETS: Readonly<Record<TypographyPresetId, TypographyPreset>> = {
+    'romantic-script': {
+        id: 'romantic-script',
+        name: 'Romantic Script & Sans',
+        description: 'Flowing Sacramento script paired with clean Josefin Sans',
+        displayFont: "'Sacramento', cursive",
+        bodyFont: "'Josefin Sans', sans-serif",
+        serifFont: "'Cormorant Garamond', Georgia, serif",
+    },
+    'royal-serif': {
+        id: 'royal-serif',
+        name: 'Royal Calligraphic & Serif',
+        description: 'Sacramento script titles with classic Cormorant Garamond editorial serif',
+        displayFont: "'Sacramento', cursive",
+        bodyFont: "'Cormorant Garamond', Georgia, serif",
+        serifFont: "'Cormorant Garamond', Georgia, serif",
+    },
+    'editorial-luxury': {
+        id: 'editorial-luxury',
+        name: 'High-Contrast Editorial',
+        description: 'Sophisticated Playfair Display headlines with refined serif body',
+        displayFont: "'Playfair Display', Georgia, serif",
+        bodyFont: "'Josefin Sans', sans-serif",
+        serifFont: "'Playfair Display', Georgia, serif",
+    },
+    'arabic-calligraphy': {
+        id: 'arabic-calligraphy',
+        name: 'Heritage Naskh & Serif',
+        description: 'Traditional Noto Naskh Arabic & Cormorant Garamond pairing',
+        displayFont: "'Noto Naskh Arabic', 'Cormorant Garamond', serif",
+        bodyFont: "'Cormorant Garamond', 'Noto Naskh Arabic', serif",
+        serifFont: "'Cormorant Garamond', Georgia, serif",
+    },
+};
+
+export const DEFAULT_DESIGN_TOKENS: Readonly<Record<InvitationDesignId, DesignTokens>> = {
+    'classic-wave': {
+        primaryColor: '#8c6d46',
+        secondaryColor: '#d4af37',
+        backgroundColor: '#f8f9fa',
+        surfaceColor: '#ffffff',
+        textColor: '#212529',
+        mutedTextColor: '#6c757d',
+        borderColor: '#dee2e6',
+        buttonBgColor: '#6b7456',
+        buttonTextColor: '#ffffff',
+        typographyPreset: 'romantic-script',
+        countdownStyle: 'pill',
+        showFloatingPetals: false,
+        showOrnateFrame: true,
+        showVerseCard: false,
+    },
+    'royal-filigree': {
+        primaryColor: '#7c5836',
+        secondaryColor: '#c89d66',
+        backgroundColor: '#f8ebe0',
+        surfaceColor: '#fdf6ee',
+        textColor: '#543822',
+        mutedTextColor: '#85654b',
+        borderColor: '#dfc19b',
+        buttonBgColor: '#6b7456',
+        buttonTextColor: '#fdf6ee',
+        typographyPreset: 'royal-serif',
+        countdownStyle: 'colon',
+        showFloatingPetals: true,
+        showOrnateFrame: true,
+        showVerseCard: true,
+    },
+    'crimson-velvet': {
+        primaryColor: '#4a1521',
+        secondaryColor: '#d4af37',
+        backgroundColor: '#2d0c13',
+        surfaceColor: '#f7efe6',
+        textColor: '#3d101a',
+        mutedTextColor: '#7a4953',
+        borderColor: '#c9a35e',
+        buttonBgColor: '#f7efe6',
+        buttonTextColor: '#4a1521',
+        typographyPreset: 'arabic-calligraphy',
+        countdownStyle: 'colon',
+        showFloatingPetals: true,
+        showOrnateFrame: true,
+        showVerseCard: true,
+    },
+    'botanical-editorial': {
+        primaryColor: '#3b4d3e',
+        secondaryColor: '#b5945b',
+        backgroundColor: '#f2efe9',
+        surfaceColor: '#fbf9f5',
+        textColor: '#233026',
+        mutedTextColor: '#5c6b5e',
+        borderColor: '#c5ccb9',
+        buttonBgColor: '#3b4d3e',
+        buttonTextColor: '#fbf9f5',
+        typographyPreset: 'editorial-luxury',
+        countdownStyle: 'cards',
+        showFloatingPetals: true,
+        showOrnateFrame: true,
+        showVerseCard: true,
+    },
+};
+
+export const buildDesignCssVariables = (tokens: DesignTokens): React.CSSProperties => {
+    const preset = TYPOGRAPHY_PRESETS[tokens.typographyPreset] ?? TYPOGRAPHY_PRESETS['romantic-script'];
+
+    return {
+        '--inv-primary': tokens.primaryColor,
+        '--inv-secondary': tokens.secondaryColor,
+        '--inv-bg': tokens.backgroundColor,
+        '--inv-surface': tokens.surfaceColor,
+        '--inv-text': tokens.textColor,
+        '--inv-muted': tokens.mutedTextColor,
+        '--inv-border': tokens.borderColor,
+        '--inv-btn-bg': tokens.buttonBgColor,
+        '--inv-btn-text': tokens.buttonTextColor,
+        '--inv-font-display': preset.displayFont,
+        '--inv-font-body': preset.bodyFont,
+        '--inv-font-serif': preset.serifFont,
+    } as React.CSSProperties;
+};

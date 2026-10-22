@@ -12,7 +12,7 @@ html {
 }
 
 .font-esthetic {
-    font-family: 'Sacramento', cursive !important;
+    font-family: var(--inv-font-display, 'Sacramento', cursive) !important;
 }
 
 .font-arabic {
@@ -112,4 +112,218 @@ svg {
 
 .no-gap-bottom {
     margin-bottom: -0.75rem !important;
+}
+
+/* ==========================================================================
+   Multi-Design System Styles (Royal Filigree, Crimson Velvet, Botanical)
+   ========================================================================== */
+
+#invitation-design-wrapper {
+    font-family: var(--inv-font-body, 'Josefin Sans', sans-serif);
+}
+
+/* Royal Filigree Archway Frame (Reference Image 5) */
+.inv-filigree-arch-frame {
+    position: relative;
+}
+
+.inv-filigree-arch-frame::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 174px 174px 22px 22px;
+    border: 1px dashed rgba(200, 157, 102, 0.45);
+    pointer-events: none;
+}
+
+/* Scalloped Lace Verse Card (Reference Image 1) */
+.inv-lace-verse-wrapper {
+    transition: transform 300ms ease, box-shadow 300ms ease;
+}
+
+/* Sealed Burgundy Floral-Lace Envelope (Reference Image 2) */
+.inv-sealed-lace-envelope {
+    transition: transform 350ms ease;
+}
+
+.inv-sealed-lace-envelope:hover {
+    transform: translateY(-3px);
+}
+
+/* Rising Ivory Parchment Card inside Velvet Envelope (Reference Images 3 & 4) */
+.inv-parchment-letter-card {
+    animation: rise-letter 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rise-letter {
+    from {
+        transform: translateY(28px);
+        opacity: 0.7;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Floating Rose Petals & Champagne Shimmer Overlay */
+.inv-petals-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1025;
+    overflow: hidden;
+}
+
+@keyframes petal-drift {
+    0% {
+        transform: translate3d(0, -10vh, 0) rotate(0deg);
+        opacity: 0;
+    }
+
+    15% {
+        opacity: 0.65;
+    }
+
+    85% {
+        opacity: 0.55;
+    }
+
+    100% {
+        transform: translate3d(28px, 105vh, 0) rotate(320deg);
+        opacity: 0;
+    }
+}
+
+.inv-petal,
+.inv-petal-particle {
+    position: absolute;
+    top: -5vh;
+    width: 12px;
+    height: 16px;
+    background-color: var(--inv-secondary, #c89d66);
+    border-radius: 75% 15% 75% 25%;
+    animation: petal-drift 12s linear infinite;
+}
+
+.inv-petal-sparkle,
+.inv-sparkle-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--inv-secondary, #d4af37);
+}
+
+.inv-petal-0 {
+    left: 8%;
+    animation-delay: 0s;
+    animation-duration: 11s;
+}
+
+.inv-petal-1 {
+    left: 22%;
+    animation-delay: 2.2s;
+    animation-duration: 14s;
+}
+
+.inv-petal-2 {
+    left: 39%;
+    animation-delay: 4.5s;
+    animation-duration: 12.5s;
+}
+
+.inv-petal-3 {
+    left: 58%;
+    animation-delay: 1.4s;
+    animation-duration: 13.5s;
+}
+
+.inv-petal-4 {
+    left: 74%;
+    animation-delay: 3.6s;
+    animation-duration: 11.8s;
+}
+
+.inv-petal-5 {
+    left: 89%;
+    animation-delay: 5.8s;
+    animation-duration: 15s;
+}
+
+/* Design Studio Floating Action Button & Slide-Over Drawer */
+.inv-design-studio-fab {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1060;
+    background: linear-gradient(135deg, #2a1d15 0%, #4a3322 100%);
+    color: #f8ebe0;
+    border: 1px solid rgba(200, 157, 102, 0.65);
+    backdrop-filter: blur(0.5rem);
+}
+
+.inv-design-studio-fab:hover {
+    background: linear-gradient(135deg, #3a281d 0%, #5c3f2a 100%);
+    color: #fff;
+}
+
+.inv-design-studio-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 10, 8, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 1064;
+}
+
+.inv-design-studio-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 23rem;
+    max-width: 92vw;
+    height: 100vh;
+    background-color: #1c1512;
+    color: #f6efe8;
+    border-left: 1px solid rgba(200, 157, 102, 0.35);
+    box-shadow: -12px 0 36px rgba(0, 0, 0, 0.45);
+    z-index: 1065;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(105%);
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.inv-design-studio-drawer.is-open {
+    transform: translateX(0);
+}
+
+.inv-design-card {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #f6efe8;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    cursor: pointer;
+}
+
+.inv-design-card:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.inv-design-card.is-selected {
+    background-color: rgba(200, 157, 102, 0.16);
+    border-color: #c89d66 !important;
+    box-shadow: 0 0 0 1px #c89d66;
+}
+
+.inv-design-subcard {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #f6efe8;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    cursor: pointer;
+}
+
+.inv-design-subcard.is-selected {
+    background-color: rgba(200, 157, 102, 0.18);
+    border-color: #c89d66 !important;
+    color: #fff;
 }
