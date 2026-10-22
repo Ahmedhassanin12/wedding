@@ -1,6 +1,8 @@
 import { progress } from './progress';
 import { util } from '../../common/util';
 import { cache } from '../../connection/cache';
+import { createStore } from '../../state/store';
+import { invitationConfig } from '../../config/invitationConfig';
 
 export interface AudioSnapshot {
     isReady: boolean;
@@ -9,66 +11,46 @@ export interface AudioSnapshot {
 }
 
 export const audio = (() => {
-    let audioEl: HTMLAudioElement | null = null;
-    let isReady = false;
-    let isPlaying = false;
-    let isLoading = false;
-    const listeners = new Set<() => void>();
-
-    let currentSnapshot: AudioSnapshot = {
+    const store = createStore<AudioSnapshot>({
         isReady: false,
         isPlaying: false,
         isLoading: false,
-    };
+    });
 
-    const emitChange = (): void => {
-        currentSnapshot = {
-            isReady,
-            isPlaying,
-            isLoading,
-        };
-        listeners.forEach((listener) => listener());
-    };
-
-    const subscribe = (listener: () => void): (() => void) => {
-        listeners.add(listener);
-        return () => {
-            listeners.delete(listener);
-        };
-    };
-
-    const getSnapshot = (): AudioSnapshot => currentSnapshot;
+    let audioEl: HTMLAudioElement | null = null;
 
     const play = async (): Promise<void> => {
         if (!navigator.onLine || !audioEl) {
             return;
         }
 
-        isLoading = true;
-        emitChange();
+        store.setState({ isLoading: true });
 
         try {
             await audioEl.play();
-            isPlaying = true;
-            isLoading = false;
-            emitChange();
+            store.setState({
+                isPlaying: true,
+                isLoading: false,
+            });
         } catch (err: unknown) {
-            isPlaying = false;
-            isLoading = false;
-            emitChange();
+            store.setState({
+                isPlaying: false,
+                isLoading: false,
+            });
             util.notify(err).error();
         }
     };
 
     const pause = (): void => {
-        isPlaying = false;
-        isLoading = false;
         audioEl?.pause();
-        emitChange();
+        store.setState({
+            isPlaying: false,
+            isLoading: false,
+        });
     };
 
     const toggle = async (): Promise<void> => {
-        if (isPlaying) {
+        if (store.getSnapshot().isPlaying) {
             pause();
         } else {
             await play();
@@ -79,7 +61,7 @@ export const audio = (() => {
      * Loads and caches the audio source into an HTMLAudioElement instance.
      */
     const load = async (audioUrl?: string | null): Promise<void> => {
-        const url = audioUrl ?? document.body.getAttribute('data-audio');
+        const url = audioUrl ?? invitationConfig.get().media.audioSrc;
         if (!url) {
             progress.complete('audio', true);
             return;
@@ -91,8 +73,7 @@ export const audio = (() => {
             audioEl.muted = false;
             audioEl.autoplay = false;
             audioEl.controls = false;
-            isReady = true;
-            emitChange();
+            store.setState({ isReady: true });
 
             progress.complete('audio');
         } catch {
@@ -102,10 +83,7 @@ export const audio = (() => {
 
     const init = () => {
         progress.add();
-        isReady = false;
-        isPlaying = false;
-        isLoading = false;
-        emitChange();
+        store.reset();
 
         return {
             load,
@@ -120,7 +98,7 @@ export const audio = (() => {
         play,
         pause,
         toggle,
-        subscribe,
-        getSnapshot,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
     };
 })();

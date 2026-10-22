@@ -2,22 +2,37 @@ import { progress } from './progress';
 import { util } from '../../common/util';
 import { cache, type CacheInstance } from '../../connection/cache';
 import { HTTP_GET, request, HTTP_STATUS_OK, HTTP_STATUS_PARTIAL_CONTENT } from '../../connection/request';
+import { createStore } from '../../state/store';
+import { invitationConfig } from '../../config/invitationConfig';
+
+export type VideoLoadStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export interface VideoSnapshot {
+    status: VideoLoadStatus;
+    percent: number;
+    label: string;
+    errorText: string | null;
+}
 
 export interface VideoLoadOptions {
     videoEl: HTMLVideoElement | null;
     src?: string | null;
-    onProgress?: (percent: number, label: string) => void;
-    onReady?: () => void;
-    onError?: (message: string) => void;
 }
 
 export const video = (() => {
+    const store = createStore<VideoSnapshot>({
+        status: 'loading',
+        percent: 0,
+        label: '',
+        errorText: null,
+    });
+
     let c: CacheInstance | null = null;
     let activeCleanup: (() => void) | null = null;
 
     /**
      * Loads, caches, and attaches an IntersectionObserver to the React-managed `<video>` element ref.
-     * Reports loading progress and state transitions via callbacks so React renders the overlay declaratively.
+     * Publishes loading progress and state transitions through the reactive `video` store.
      */
     const load = (options?: VideoLoadOptions): Promise<void> => {
         if (activeCleanup) {
@@ -26,13 +41,25 @@ export const video = (() => {
         }
 
         const vid = options?.videoEl ?? null;
-        const src = options?.src ?? vid?.getAttribute('data-src') ?? null;
+        const src = options?.src ?? vid?.getAttribute('data-src') ?? invitationConfig.get().media.videoSrc;
 
         if (!vid || !src) {
-            options?.onReady?.();
+            store.setState({
+                status: 'ready',
+                percent: 100,
+                label: '100%',
+                errorText: null,
+            });
             progress.complete('video', true);
             return Promise.resolve();
         }
+
+        store.setState({
+            status: 'loading',
+            percent: 0,
+            label: '',
+            errorText: null,
+        });
 
         vid.loop = true;
         vid.muted = true;
@@ -104,7 +131,12 @@ export const video = (() => {
                         .withProgressFunc((a, b) => {
                             const pct = Number(((a / b) * 100).toFixed(0));
                             const result = `${pct}%`;
-                            options?.onProgress?.(pct, result);
+                            store.setState({
+                                status: 'loading',
+                                percent: pct,
+                                label: result,
+                                errorText: null,
+                            });
                         })
                         .default();
                 })
@@ -120,7 +152,11 @@ export const video = (() => {
                         }),
                 )
                 .catch((err: unknown) => {
-                    options?.onError?.('Error loading video');
+                    store.setState((prev) => ({
+                        ...prev,
+                        status: 'error',
+                        errorText: 'Error loading video',
+                    }));
                     console.error(err);
                 });
         };
@@ -148,7 +184,14 @@ export const video = (() => {
             })
             .then(() => {
                 observer?.observe(vid);
-                options?.onReady?.();
+                store.setState((prev) =>
+                    prev.status === 'error'
+                        ? prev
+                        : {
+                              ...prev,
+                              status: 'ready',
+                          },
+                );
             });
     };
 
@@ -162,6 +205,7 @@ export const video = (() => {
     const init = () => {
         progress.add();
         c = cache('video').withForceCache();
+        store.reset();
 
         return {
             load,
@@ -172,5 +216,7 @@ export const video = (() => {
     return {
         init,
         cleanup,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
     };
 })();

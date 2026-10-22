@@ -1,4 +1,6 @@
 import { storage } from './storage';
+import { createStore } from '../state/store';
+import { invitationConfig } from '../config/invitationConfig';
 import type { StorageAdapter } from '../types';
 
 export interface ThemeSnapshot {
@@ -7,24 +9,13 @@ export interface ThemeSnapshot {
 }
 
 export const theme = (() => {
-    const themeColors: Readonly<Record<string, string>> = {
-        '#000000': '#ffffff',
-        '#ffffff': '#000000',
-        '#212529': '#f8f9fa',
-        '#f8f9fa': '#212529',
-    };
-    const themeLight = ['#ffffff', '#f8f9fa'];
-    const themeDark = ['#000000', '#212529'];
-
-    let isAuto = false;
-    let themes: StorageAdapter<{ active: string }> | null = null;
-    let metaTheme: HTMLElement | null = null;
-    const listeners = new Set<() => void>();
-
-    let currentSnapshot: ThemeSnapshot = {
+    const store = createStore<ThemeSnapshot>({
         isDark: false,
         isAuto: false,
-    };
+    });
+
+    let themes: StorageAdapter<{ active: string }> | null = null;
+    let metaTheme: HTMLElement | null = null;
 
     const ensureThemes = (): StorageAdapter<{ active: string }> => {
         if (!themes) {
@@ -33,41 +24,36 @@ export const theme = (() => {
         return themes;
     };
 
-    const emitChange = (): void => {
-        currentSnapshot = {
-            isDark: ensureThemes().get('active') === 'dark',
-            isAuto,
-        };
-        listeners.forEach((listener) => listener());
-    };
-
     const setLight = (): void => ensureThemes().set('active', 'light');
 
     const setDark = (): void => ensureThemes().set('active', 'dark');
 
-    const setMetaTheme = (listTheme: string[]): void => {
+    const setMetaTheme = (listTheme: ReadonlyArray<string>): void => {
         if (!metaTheme) {
             metaTheme = document.querySelector('meta[name="theme-color"]');
         }
         if (!metaTheme) {
             return;
         }
+        const { swapMap } = invitationConfig.get().presentation.themePalette;
         const now = metaTheme.getAttribute('content') ?? '';
-        metaTheme.setAttribute('content', listTheme.some((i) => i === now) ? themeColors[now] : now);
+        metaTheme.setAttribute('content', listTheme.some((i) => i === now) ? swapMap[now] : now);
     };
 
     const onLight = (): void => {
+        const { darkColors } = invitationConfig.get().presentation.themePalette;
         setLight();
         document.documentElement.setAttribute('data-bs-theme', 'light');
-        setMetaTheme(themeDark);
-        emitChange();
+        setMetaTheme(darkColors);
+        store.setState({ isDark: false });
     };
 
     const onDark = (): void => {
+        const { lightColors } = invitationConfig.get().presentation.themePalette;
         setDark();
         document.documentElement.setAttribute('data-bs-theme', 'dark');
-        setMetaTheme(themeLight);
-        emitChange();
+        setMetaTheme(lightColors);
+        store.setState({ isDark: true });
     };
 
     function isDarkMode(): boolean;
@@ -84,16 +70,7 @@ export const theme = (() => {
 
     const change = (): void => (isDarkMode() ? onLight() : onDark());
 
-    const isAutoMode = (): boolean => isAuto;
-
-    const getSnapshot = (): ThemeSnapshot => currentSnapshot;
-
-    const subscribe = (listener: () => void): (() => void) => {
-        listeners.add(listener);
-        return () => {
-            listeners.delete(listener);
-        };
-    };
+    const isAutoMode = (): boolean => store.getSnapshot().isAuto;
 
     /**
      * Observes section elements via IntersectionObserver to synchronize mobile browser
@@ -104,16 +81,16 @@ export const theme = (() => {
             return () => {};
         }
 
-        const callback: IntersectionObserverCallback = (es) =>
-            es
-                .filter((e) => e.isIntersecting)
-                .forEach((e) => {
-                    const themeColor = e.target.classList.contains('bg-white-black')
-                        ? isDarkMode(themeDark[0], themeLight[0])
-                        : isDarkMode(themeDark[1], themeLight[1]);
+        const callback: IntersectionObserverCallback = (es) => {
+            const { darkColors, lightColors } = invitationConfig.get().presentation.themePalette;
+            es.filter((e) => e.isIntersecting).forEach((e) => {
+                const themeColor = e.target.classList.contains('bg-white-black')
+                    ? isDarkMode(darkColors[0], lightColors[0])
+                    : isDarkMode(darkColors[1], lightColors[1]);
 
-                    metaTheme?.setAttribute('content', themeColor);
-                });
+                metaTheme?.setAttribute('content', themeColor);
+            });
+        };
 
         const observerTop = new IntersectionObserver(callback, { rootMargin: '0% 0% -95% 0%' });
         const targets = sections ? Array.from(sections) : [];
@@ -125,7 +102,7 @@ export const theme = (() => {
     };
 
     const init = (): void => {
-        themes = storage('theme');
+        themes = storage<{ active: string }>('theme');
         metaTheme = document.querySelector('meta[name="theme-color"]');
 
         if (!themes.has('active')) {
@@ -139,6 +116,7 @@ export const theme = (() => {
             }
         }
 
+        let isAuto = false;
         switch (document.documentElement.getAttribute('data-bs-theme')) {
             case 'dark':
                 setDark();
@@ -153,6 +131,8 @@ export const theme = (() => {
                 break;
         }
 
+        store.setState({ isAuto });
+
         if (isDarkMode()) {
             onDark();
         } else {
@@ -166,7 +146,7 @@ export const theme = (() => {
         change,
         isDarkMode,
         isAutoMode,
-        subscribe,
-        getSnapshot,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
     };
 })();

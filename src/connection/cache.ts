@@ -1,4 +1,5 @@
 import { request, cacheWrapper, HTTP_GET } from './request';
+import { invitationConfig } from '../config/invitationConfig';
 import type { CacheRunItem } from '../types';
 
 export const cache = (cacheName: string) => {
@@ -6,7 +7,7 @@ export const cache = (cacheName: string) => {
     const inFlightRequests = new Map<string, Promise<string>>();
     const cw = cacheWrapper(cacheName);
 
-    let ttl = 1000 * 60 * 60 * 6;
+    let ttl = invitationConfig.get().network.defaultCacheTtlMs;
     let forceCache = false;
 
     const set = (input: string | URL, res: Response): Promise<Response> => {
@@ -44,7 +45,10 @@ export const cache = (cacheName: string) => {
     };
 
     const run = (items: Array<CacheRunItem | null>, cancel: Promise<unknown> | null = null): Promise<unknown> => {
-        const uniq = new Map<string, Array<[(blobUrl: string) => void | Promise<void>, ((err: unknown) => void) | undefined]>>();
+        const uniq = new Map<
+            string,
+            Array<[(blobUrl: string) => void | Promise<void>, ((err: unknown) => void) | undefined]>
+        >();
 
         if (items.length === 0) {
             return Promise.resolve();

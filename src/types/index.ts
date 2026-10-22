@@ -25,8 +25,9 @@ export interface NotifyActions {
     custom: (emoji: string) => void;
 }
 
-export interface StorageAdapter<T = Record<string, unknown>> {
-    get: <K extends keyof T & string>(key?: K | null) => any;
+export interface StorageAdapter<T extends Record<string, unknown> = Record<string, unknown>> {
+    get(): T;
+    get<K extends keyof T & string>(key: K): T[K] | undefined;
     set: <K extends keyof T & string>(key: K, value: T[K]) => void;
     has: (key: string) => boolean;
     clear: () => void;

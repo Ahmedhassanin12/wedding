@@ -1,3 +1,4 @@
+import { invitationConfig } from '../config/invitationConfig';
 import type { ApiResponse } from '../types';
 
 export const HTTP_GET = 'GET';
@@ -18,8 +19,6 @@ export const defaultJSON: Readonly<Record<string, string>> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
 };
-
-export const cacheRequest = 'request';
 
 class MemoryCache {
     private store = new Map<string, Response>();
@@ -77,14 +76,15 @@ export const pool = (() => {
             const c = await openCacheStorage(name);
             cachePool.set(name, c);
         },
-        init: (callback: () => void, lists: string[] = []): void => {
+        init: (callback: () => void, lists: ReadonlyArray<string> = []): void => {
             if (typeof window !== 'undefined' && window.isSecureContext === false) {
                 throw new Error('this application required secure context');
             }
 
+            const { requestCacheName } = invitationConfig.get().network;
             cachePool = new Map();
             Promise.all(
-                lists.concat([cacheRequest]).map((v) => openCacheStorage(v).then((c) => cachePool!.set(v, c))),
+                lists.concat([requestCacheName]).map((v) => openCacheStorage(v).then((c) => cachePool!.set(v, c))),
             ).then(() => callback());
         },
     };
@@ -242,7 +242,7 @@ export const request = (method: string, path: string) => {
                 return wrapperFetch();
             }
 
-            const cw = cacheWrapper(cacheRequest);
+            const cw = cacheWrapper(invitationConfig.get().network.requestCacheName);
 
             return cw.has(input).then((res) => {
                 if (res) {
@@ -321,7 +321,7 @@ export const request = (method: string, path: string) => {
     };
 
     const builder = {
-        send<T = any>(transform: ((data: any) => T) | null = null): Promise<ApiResponse<T>> {
+        send<T = unknown>(transform: ((data: unknown) => T) | null = null): Promise<ApiResponse<T>> {
             if (downName) {
                 Object.keys(defaultJSON).forEach((k) => req.headers.delete(k));
             }
@@ -368,11 +368,11 @@ export const request = (method: string, path: string) => {
                     throw finalErr;
                 });
         },
-        withCache(ttl = 1000 * 60 * 60 * 6) {
+        withCache(ttl = invitationConfig.get().network.defaultCacheTtlMs) {
             reqTtl = ttl;
             return builder;
         },
-        withForceCache(ttl = 1000 * 60 * 60 * 6) {
+        withForceCache(ttl = invitationConfig.get().network.defaultCacheTtlMs) {
             reqForceCache = true;
             if (reqTtl === 0) {
                 reqTtl = ttl;
@@ -383,7 +383,10 @@ export const request = (method: string, path: string) => {
             reqNoBody = true;
             return builder;
         },
-        withRetry(maxRetries = 3, delay = 1000) {
+        withRetry(
+            maxRetries = invitationConfig.get().network.defaultRetryCount,
+            delay = invitationConfig.get().network.defaultRetryDelayMs,
+        ) {
             reqRetry = maxRetries;
             reqDelay = delay;
             return builder;

@@ -1,3 +1,5 @@
+import { createStore } from '../../state/store';
+
 export interface ProgressSnapshot {
     total: number;
     loaded: number;
@@ -9,20 +11,7 @@ export interface ProgressSnapshot {
 }
 
 export const progress = (() => {
-    let total = 0;
-    let loaded = 0;
-    let valid = true;
-    let isVisible = false;
-    let isError = false;
-    let isDone = false;
-    let infoText = 'Booting application...';
-
-    let cancelProgress: Promise<void> | null = null;
-    let resolveCancel: (() => void) | null = null;
-    const listeners = new Set<() => void>();
-    const doneListeners = new Set<() => void>();
-
-    let currentSnapshot: ProgressSnapshot = {
+    const store = createStore<ProgressSnapshot>({
         total: 0,
         loaded: 0,
         percentage: 0,
@@ -30,37 +19,21 @@ export const progress = (() => {
         isVisible: false,
         isError: false,
         isDone: false,
-    };
+    });
 
-    const showInformation = (): string => {
+    let valid = true;
+    let cancelProgress: Promise<void> | null = null;
+    let resolveCancel: (() => void) | null = null;
+    const doneListeners = new Set<() => void>();
+
+    const formatProgressRatio = (loaded: number, total: number): string => {
         const pct = total > 0 ? Math.floor((loaded / total) * 100) : 0;
         return `(${loaded}/${total}) [${pct}%]`;
     };
 
-    const emitChange = (): void => {
-        const percentage = total > 0 ? Math.min((loaded / total) * 100, 100) : 0;
-        currentSnapshot = {
-            total,
-            loaded,
-            percentage,
-            infoText,
-            isVisible,
-            isError,
-            isDone,
-        };
-        listeners.forEach((listener) => listener());
-    };
-
-    const subscribe = (listener: () => void): (() => void) => {
-        listeners.add(listener);
-        return () => {
-            listeners.delete(listener);
-        };
-    };
-
     const onDone = (listener: () => void): (() => void) => {
         doneListeners.add(listener);
-        if (isDone) {
+        if (store.getSnapshot().isDone) {
             listener();
         }
         return () => {
@@ -68,11 +41,16 @@ export const progress = (() => {
         };
     };
 
-    const getSnapshot = (): ProgressSnapshot => currentSnapshot;
-
     const add = (): void => {
-        total += 1;
-        emitChange();
+        store.setState((prev) => {
+            const total = prev.total + 1;
+            const percentage = total > 0 ? Math.min((prev.loaded / total) * 100, 100) : 0;
+            return {
+                ...prev,
+                total,
+                percentage,
+            };
+        });
     };
 
     const complete = (type: string, skip = false): void => {
@@ -80,49 +58,68 @@ export const progress = (() => {
             return;
         }
 
-        loaded += 1;
-        infoText = `Loading ${type} ${skip ? 'skipped' : 'complete'} ${showInformation()}`;
+        const prev = store.getSnapshot();
+        const loaded = prev.loaded + 1;
+        const total = prev.total;
+        const percentage = total > 0 ? Math.min((loaded / total) * 100, 100) : 0;
+        const infoText = `Loading ${type} ${skip ? 'skipped' : 'complete'} ${formatProgressRatio(loaded, total)}`;
 
         if (loaded >= total) {
             valid = false;
-            isDone = true;
             cancelProgress = null;
             resolveCancel = null;
-            emitChange();
+            store.setState({
+                ...prev,
+                loaded,
+                percentage,
+                infoText,
+                isDone: true,
+            });
             doneListeners.forEach((fn) => fn());
             return;
         }
 
-        emitChange();
+        store.setState({
+            ...prev,
+            loaded,
+            percentage,
+            infoText,
+        });
     };
 
     const invalid = (type: string): void => {
         if (valid) {
             valid = false;
-            isError = true;
-            infoText = `Error loading ${type} ${showInformation()}`;
+            const prev = store.getSnapshot();
+            const infoText = `Error loading ${type} ${formatProgressRatio(prev.loaded, prev.total)}`;
             if (resolveCancel) {
                 resolveCancel();
                 resolveCancel = null;
             }
-            emitChange();
+            store.setState({
+                ...prev,
+                isError: true,
+                infoText,
+            });
         }
     };
 
     const getAbort = (): Promise<void> | null => cancelProgress;
 
     const init = (): void => {
-        total = 0;
-        loaded = 0;
         valid = true;
-        isVisible = true;
-        isError = false;
-        isDone = false;
-        infoText = 'Booting application...';
         cancelProgress = new Promise<void>((res) => {
             resolveCancel = res;
         });
-        emitChange();
+        store.setState({
+            total: 0,
+            loaded: 0,
+            percentage: 0,
+            infoText: 'Booting application...',
+            isVisible: true,
+            isError: false,
+            isDone: false,
+        });
     };
 
     return {
@@ -131,8 +128,8 @@ export const progress = (() => {
         invalid,
         complete,
         getAbort,
-        subscribe,
         onDone,
-        getSnapshot,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
     };
 })();

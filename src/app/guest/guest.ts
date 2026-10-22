@@ -7,11 +7,12 @@ import { bs } from '../../libs/bootstrap';
 import { loader } from '../../libs/loader';
 import { theme } from '../../common/theme';
 import { lang } from '../../common/language';
-import { storage } from '../../common/storage';
 import { offline } from '../../common/offline';
 import * as confetti from '../../libs/confetti';
 import { pool } from '../../connection/request';
-import type { LoaderOptions, StorageAdapter } from '../../types';
+import { createStore } from '../../state/store';
+import { invitationConfig } from '../../config/invitationConfig';
+import type { LoaderOptions } from '../../types';
 
 export interface SelectedModalImage {
     src: string;
@@ -35,55 +36,24 @@ export interface GuestMountRefs {
 }
 
 export const guest = (() => {
-    let config: StorageAdapter<Record<string, any>> | null = null;
-    let isOpened = false;
-    let isBooted = false;
-    let selectedImage: SelectedModalImage | null = null;
-    let modalElementRef: HTMLElement | null = null;
-    const listeners = new Set<() => void>();
-
-    let currentSnapshot: GuestSnapshot = {
+    const store = createStore<GuestSnapshot>({
         isOpened: false,
         isBooted: false,
         selectedImage: null,
-    };
+    });
 
-    const emitChange = (): void => {
-        currentSnapshot = {
-            isOpened,
-            isBooted,
-            selectedImage,
-        };
-        listeners.forEach((listener) => listener());
-    };
-
-    const subscribe = (listener: () => void): (() => void) => {
-        listeners.add(listener);
-        return () => {
-            listeners.delete(listener);
-        };
-    };
-
-    const getSnapshot = (): GuestSnapshot => currentSnapshot;
-
-    const ensureStores = (): StorageAdapter<Record<string, any>> => {
-        if (!config) {
-            config = storage('config');
-        }
-        return config;
-    };
+    let modalElementRef: HTMLElement | null = null;
 
     const open = (button?: HTMLButtonElement | null): void => {
         if (button) {
             button.disabled = true;
         }
-        isOpened = true;
-        emitChange();
+        store.setState({ isOpened: true });
 
         document.body.scrollIntoView?.({ behavior: 'instant' });
 
         confetti.basicAnimation();
-        util.timeOut(confetti.openAnimation, 1500);
+        util.timeOut(confetti.openAnimation, invitationConfig.get().presentation.confettiOpenDelayMs);
         void audio.play();
     };
 
@@ -97,8 +67,7 @@ export const guest = (() => {
             width: img.width || undefined,
             height: img.height || undefined,
         };
-        selectedImage = nextImage;
-        emitChange();
+        store.setState({ selectedImage: nextImage });
 
         if (modalElementRef) {
             bs.modal(modalElementRef).show();
@@ -131,7 +100,6 @@ export const guest = (() => {
         lang.init();
         const cleanupOffline = offline.init();
         progress.init();
-        ensureStores();
 
         if (refs?.modalElement !== undefined) {
             modalElementRef = refs.modalElement;
@@ -145,17 +113,15 @@ export const guest = (() => {
         const lib = loaderLibs();
 
         const unsubscribeDone = progress.onDone(() => {
-            isBooted = true;
-            emitChange();
+            store.setState({ isBooted: true });
         });
 
+        const cfg = invitationConfig.get();
         void vid.load(refs?.videoOptions);
         void img.load();
-        void aud.load(refs?.audioUrl);
+        void aud.load(refs?.audioUrl ?? cfg.media.audioSrc);
         lib.load({
-            confetti:
-                refs?.enableConfetti ??
-                (typeof document !== 'undefined' && document.body.getAttribute('data-confetti') === 'true'),
+            confetti: refs?.enableConfetti ?? cfg.presentation.enableConfetti,
         });
 
         return () => {
@@ -167,23 +133,21 @@ export const guest = (() => {
     };
 
     const reset = (): void => {
-        isOpened = false;
-        isBooted = false;
-        selectedImage = null;
-        emitChange();
+        store.reset();
     };
 
     const init = (refs?: GuestMountRefs) => {
         reset();
-
+        invitationConfig.syncFromDom();
         theme.init();
 
         let cleanupPage: (() => void) | null = null;
+        const { cacheBuckets } = invitationConfig.get().network;
 
         const startPool = () => {
             pool.init(() => {
                 cleanupPage = pageLoaded(refs);
-            }, ['image', 'video', 'audio', 'libs']);
+            }, cacheBuckets);
         };
 
         if (typeof document !== 'undefined') {
@@ -198,8 +162,10 @@ export const guest = (() => {
             util,
             theme,
             audio,
+            video,
             progress,
             offline,
+            config: invitationConfig,
             cleanup: () => {
                 cleanupPage?.();
             },
@@ -207,8 +173,9 @@ export const guest = (() => {
                 open,
                 modal,
                 showStory,
-                subscribe,
-                getSnapshot,
+                reset,
+                subscribe: store.subscribe,
+                getSnapshot: store.getSnapshot,
                 setModalElement,
             },
         };
@@ -221,8 +188,8 @@ export const guest = (() => {
         open,
         modal,
         showStory,
-        subscribe,
-        getSnapshot,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
         setModalElement,
     };
 })();

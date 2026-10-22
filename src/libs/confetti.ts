@@ -1,6 +1,5 @@
+import { invitationConfig } from '../config/invitationConfig';
 import type { ConfettiShape } from '../types';
-
-const zIndex = 1057;
 
 const heartShape = (): ConfettiShape | undefined => {
     return window.confetti?.shapeFromPath({
@@ -10,24 +9,25 @@ const heartShape = (): ConfettiShape | undefined => {
 };
 
 export const basicAnimation = (): void => {
+    const { confettiZIndex } = invitationConfig.get().presentation;
     if (window.confetti) {
         window.confetti({
             origin: { y: 1 },
-            zIndex,
+            zIndex: confettiZIndex,
         });
     }
 };
 
-export const openAnimation = (until = 15): void => {
+export const openAnimation = (until = invitationConfig.get().presentation.confettiOpenDurationSec): void => {
     if (!window.confetti) {
         return;
     }
 
+    const { confettiZIndex, confettiOpenColors } = invitationConfig.get().presentation;
     const duration = until * 1000;
     const animationEnd = Date.now() + duration;
 
     const heart = heartShape();
-    const colors = ['#FFC0CB', '#FF1493', '#C71585'];
 
     const randomInRange = (min: number, max: number): number => {
         return Math.random() * (max - min) + min;
@@ -36,7 +36,7 @@ export const openAnimation = (until = 15): void => {
     const frame = (): void => {
         const timeLeft = animationEnd - Date.now();
 
-        colors.forEach((color) => {
+        confettiOpenColors.forEach((color) => {
             window.confetti?.({
                 particleCount: 1,
                 startVelocity: 0,
@@ -45,7 +45,7 @@ export const openAnimation = (until = 15): void => {
                     x: Math.random(),
                     y: Math.abs(Math.random() - timeLeft / duration),
                 },
-                zIndex,
+                zIndex: confettiZIndex,
                 colors: [color],
                 shapes: heart ? [heart] : undefined,
                 drift: randomInRange(-0.5, 0.5),
@@ -67,22 +67,22 @@ export const tapTapAnimation = (div: HTMLElement, duration = 50): void => {
         return;
     }
 
+    const { confettiZIndex, confettiTapColors } = invitationConfig.get().presentation;
     const end = Date.now() + duration;
     const domRec = div.getBoundingClientRect();
     const yPosition = Math.max(0.3, Math.min(1, domRec.top / window.innerHeight + 0.2));
 
     const heart = heartShape();
-    const colors = ['#FF69B4', '#FF1493'];
 
     const frame = (): void => {
-        colors.forEach((color) => {
+        confettiTapColors.forEach((color) => {
             window.confetti?.({
                 particleCount: 2,
                 angle: 60,
                 spread: 55,
                 shapes: heart ? [heart] : undefined,
                 origin: { x: domRec.left / window.innerWidth, y: yPosition },
-                zIndex,
+                zIndex: confettiZIndex,
                 colors: [color],
             });
             window.confetti?.({
@@ -91,7 +91,7 @@ export const tapTapAnimation = (div: HTMLElement, duration = 50): void => {
                 spread: 55,
                 shapes: heart ? [heart] : undefined,
                 origin: { x: domRec.right / window.innerWidth, y: yPosition },
-                zIndex,
+                zIndex: confettiZIndex,
                 colors: [color],
             });
         });

@@ -1,27 +1,37 @@
 import type { StorageAdapter } from '../types';
 
-export const storage = <T extends Record<string, any> = Record<string, any>>(table: string): StorageAdapter<T> => {
-    const get = <K extends keyof T & string>(key: K | null = null): any => {
+export const storage = <T extends Record<string, unknown> = Record<string, unknown>>(
+    table: string,
+): StorageAdapter<T> => {
+    const readTable = (): T => {
         const raw = localStorage.getItem(table);
-        const data: Record<string, unknown> = raw ? JSON.parse(raw) : {};
-        return key ? data[String(key)] : data;
+        return (raw ? JSON.parse(raw) : {}) as T;
     };
 
+    function get(): T;
+    function get<K extends keyof T & string>(key: K): T[K] | undefined;
+    function get<K extends keyof T & string>(key?: K): T | T[K] | undefined {
+        const data = readTable();
+        if (key !== undefined) {
+            return data[key];
+        }
+        return data;
+    }
+
     const set = <K extends keyof T & string>(key: K, value: T[K]): void => {
-        const data = get() as Record<string, unknown>;
-        data[String(key)] = value;
+        const data = { ...readTable(), [key]: value };
         localStorage.setItem(table, JSON.stringify(data));
     };
 
-    const has = (key: string): boolean => Object.keys(get() as Record<string, unknown>).includes(String(key));
+    const has = (key: string): boolean => Object.prototype.hasOwnProperty.call(readTable(), key);
 
     const unset = (key: string): void => {
         if (!has(key)) {
             return;
         }
 
-        const data = get() as Record<string, unknown>;
-        delete data[String(key)];
+        const data = { ...readTable() } as Record<string, unknown>;
+        delete data[key];
         localStorage.setItem(table, JSON.stringify(data));
     };
 

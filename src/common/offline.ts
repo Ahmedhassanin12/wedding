@@ -1,4 +1,6 @@
 import { util } from './util';
+import { createStore } from '../state/store';
+import { invitationConfig } from '../config/invitationConfig';
 
 export interface OfflineSnapshot {
     isOnline: boolean;
@@ -6,44 +8,25 @@ export interface OfflineSnapshot {
 }
 
 export const offline = (() => {
-    let online = true;
-    let bannerState: 'hidden' | 'offline' | 'online-restored' = 'hidden';
-    let restoreTimerCancel: (() => void) | null = null;
-    let initialized = false;
-    const listeners = new Set<() => void>();
-
-    let currentSnapshot: OfflineSnapshot = {
+    const store = createStore<OfflineSnapshot>({
         isOnline: true,
         bannerState: 'hidden',
-    };
+    });
 
-    const emitChange = (): void => {
-        currentSnapshot = {
-            isOnline: online,
-            bannerState,
-        };
-        listeners.forEach((listener) => listener());
-    };
+    let restoreTimerCancel: (() => void) | null = null;
+    let initialized = false;
 
-    const isOnline = (): boolean => online;
-
-    const getSnapshot = (): OfflineSnapshot => currentSnapshot;
-
-    const subscribe = (listener: () => void): (() => void) => {
-        listeners.add(listener);
-        return () => {
-            listeners.delete(listener);
-        };
-    };
+    const isOnline = (): boolean => store.getSnapshot().isOnline;
 
     const onOffline = (): void => {
         if (restoreTimerCancel) {
             restoreTimerCancel();
             restoreTimerCancel = null;
         }
-        online = false;
-        bannerState = 'offline';
-        emitChange();
+        store.setState({
+            isOnline: false,
+            bannerState: 'offline',
+        });
     };
 
     const onOnline = (): void => {
@@ -51,23 +34,26 @@ export const offline = (() => {
             restoreTimerCancel();
             restoreTimerCancel = null;
         }
-        online = true;
-        bannerState = 'online-restored';
-        emitChange();
+        store.setState({
+            isOnline: true,
+            bannerState: 'online-restored',
+        });
 
+        const durationMs = invitationConfig.get().presentation.offlineRestoreBannerDurationMs;
         restoreTimerCancel = util.timeOut(() => {
-            if (online) {
-                bannerState = 'hidden';
-                emitChange();
+            if (store.getSnapshot().isOnline) {
+                store.setState({ bannerState: 'hidden' });
             }
-        }, 3000);
+        }, durationMs);
     };
 
     const init = (): (() => void) => {
         if (!initialized) {
-            online = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
-            bannerState = online ? 'hidden' : 'offline';
-            currentSnapshot = { isOnline: online, bannerState };
+            const online = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+            store.setState({
+                isOnline: online,
+                bannerState: online ? 'hidden' : 'offline',
+            });
             window.addEventListener('online', onOnline);
             window.addEventListener('offline', onOffline);
             initialized = true;
@@ -89,7 +75,7 @@ export const offline = (() => {
     return {
         init,
         isOnline,
-        subscribe,
-        getSnapshot,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
     };
 })();

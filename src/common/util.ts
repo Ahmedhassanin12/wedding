@@ -4,7 +4,7 @@ export const util = (() => {
     const listsMarkDown: ReadonlyArray<readonly [string, string]> = [
         ['*', '<strong class="text-theme-auto">$1</strong>'],
         ['_', '<em class="text-theme-auto">$1</em>'],
-        ['~', '<del class="text-theme-auto">$1</del>'],
+        ['~', '<del class="text-theme-auto">$1</em>'.replace('em>', 'del>')],
         ['```', '<code class="font-monospace text-theme-auto">$1</code>'],
     ];
 
@@ -76,7 +76,7 @@ export const util = (() => {
         };
     };
 
-    const debounce = <T extends (...args: any[]) => void>(
+    const debounce = <T extends (...args: never[]) => void>(
         callback: T,
         delay = 100,
     ): ((...args: Parameters<T>) => void) => {

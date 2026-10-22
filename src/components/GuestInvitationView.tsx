@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { guest } from '../app/guest/guest';
 import { image } from '../app/guest/image';
 import { audio } from '../app/guest/audio';
@@ -8,11 +8,14 @@ import {
     useCountdown,
     useDesktopSlideshow,
     useGuestQueryName,
+    useGuestStore,
     useOfflineStore,
     useProgressStore,
     useThemeStore,
+    useVideoStore,
 } from '../app/guest/useGuestInvitation';
 import { theme } from '../common/theme';
+import { useInvitationConfig } from '../config/invitationConfig';
 
 export interface GuestInvitationProps {
     coupleNames?: string;
@@ -31,10 +34,17 @@ export interface GuestInvitationProps {
     autoInit?: boolean;
 }
 
-const DESKTOP_SLIDE_SEEDS = [7, 8, 9] as const;
-
 const HEART_SVG_PATH =
     'm8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143q.09.083.176.171a3 3 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15';
+
+const WAVE_HOME_TO_BRIDE =
+    'M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,165.3C672,160,768,96,864,96C960,96,1056,160,1152,154.7C1248,149,1344,75,1392,37.3L1440,0L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z';
+
+const WAVE_BRIDE_TO_STORY =
+    'M0,192L40,181.3C80,171,160,149,240,149.3C320,149,400,171,480,165.3C560,160,640,128,720,128C800,128,880,160,960,186.7C1040,213,1120,235,1200,218.7C1280,203,1360,149,1400,122.7L1440,96L1440,0L1400,0C1360,0,1280,0,1200,0C1120,0,1040,0,960,0C880,0,800,0,720,0C640,0,560,0,480,0C400,0,320,0,240,0C160,0,80,0,40,0L0,0Z';
+
+const WAVE_STORY_TO_DATE =
+    'M0,96L30,106.7C60,117,120,139,180,154.7C240,171,300,181,360,186.7C420,192,480,192,540,181.3C600,171,660,149,720,154.7C780,160,840,192,900,208C960,224,1020,224,1080,208C1140,192,1200,160,1260,138.7C1320,117,1380,107,1410,101.3L1440,96L1440,320L1410,320C1380,320,1320,320,1260,320C1200,320,1140,320,1080,320C1020,320,960,320,900,320C840,320,780,320,720,320C660,320,600,320,540,320C480,320,420,320,360,320C300,320,240,320,180,320C120,320,60,320,30,320L0,320Z';
 
 interface AnimatedHeartSvgProps {
     delayMs: number;
@@ -82,49 +92,80 @@ const WaveSeparator: React.FC<WaveSeparatorProps> = ({ pathD }) => (
     </div>
 );
 
-export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
-    coupleNames = 'Ahmed & Nermin',
-    groomName = 'Ahmed',
-    brideName = 'Nermin',
-    weddingDateDisplay = 'Thursday, 8 October 2026',
-    weddingDateTimeDisplay = 'Thursday, 8 October 2026 · 9:00 PM',
-    ceremonyTimeDisplay = '9:00 PM - Until finished',
-    countdownTargetTime,
-    locationAddress = 'Rotana High Class Village, Zifta-Tanta Road .',
-    googleMapsUrl = 'https://maps.app.goo.gl/z9SuGTQF8qQdhhKm7?g_st=aw',
-    videoSrc = './assets/video/265501_tiny.mp4',
-    audioSrc,
-    enableConfetti,
-    guestSalutation = 'Dear Mr./Mrs./Ms.',
-    autoInit = false,
-}) => {
-    const guestState = useSyncExternalStore(guest.subscribe, guest.getSnapshot);
+interface OfflineStatusBannerProps {
+    bannerState: 'hidden' | 'offline' | 'online-restored';
+}
+
+const OfflineStatusBanner: React.FC<OfflineStatusBannerProps> = ({ bannerState }) => {
+    if (bannerState === 'hidden') {
+        return null;
+    }
+
+    return (
+        <div className="fixed-top pe-none" style={{ opacity: 1, zIndex: 1057, transition: 'opacity 300ms ease' }}>
+            <div className="d-flex justify-content-center mx-auto">
+                <div
+                    className={`d-flex justify-content-center align-items-center rounded-pill my-2 ${
+                        bannerState === 'offline' ? 'bg-danger' : 'bg-success'
+                    } shadow`}
+                >
+                    <small
+                        className="text-center py-1 px-2 mx-1 mt-1 mb-0 text-white"
+                        style={{ fontSize: '0.8rem' }}
+                    >
+                        {bannerState === 'offline' ? (
+                            <>
+                                <i className="fa-solid fa-ban me-2"></i>Koneksi tidak tersedia
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa-solid fa-cloud me-2"></i>Koneksi tersedia kembali
+                            </>
+                        )}
+                    </small>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
+    const config = useInvitationConfig();
+    const guestState = useGuestStore();
     const progressState = useProgressStore();
     const offlineState = useOfflineStore();
     const themeState = useThemeStore();
     const audioState = useAudioStore();
+    const videoState = useVideoStore();
+
+    const coupleNames = props.coupleNames ?? config.couple.coupleNames;
+    const groomName = props.groomName ?? config.couple.groomName;
+    const brideName = props.brideName ?? config.couple.brideName;
+    const weddingDateDisplay = props.weddingDateDisplay ?? config.event.weddingDateDisplay;
+    const weddingDateTimeDisplay = props.weddingDateTimeDisplay ?? config.event.weddingDateTimeDisplay;
+    const ceremonyTimeDisplay = props.ceremonyTimeDisplay ?? config.event.ceremonyTimeDisplay;
+    const locationAddress = props.locationAddress ?? config.event.locationAddress;
+    const googleMapsUrl = props.googleMapsUrl ?? config.event.googleMapsUrl;
+    const videoSrc = props.videoSrc ?? config.media.videoSrc;
+    const audioSrc = props.audioSrc ?? config.media.audioSrc;
+    const enableConfetti = props.enableConfetti ?? config.presentation.enableConfetti;
+    const guestSalutation = props.guestSalutation ?? config.presentation.guestSalutation;
+    const autoInit = props.autoInit ?? false;
 
     const effectiveTargetTime =
-        countdownTargetTime ??
+        props.countdownTargetTime ??
         (typeof document !== 'undefined' ? document.body.getAttribute('data-time') : null) ??
-        '2024-01-01 09:30:00';
+        config.event.countdownTargetTime;
 
     const countdown = useCountdown(effectiveTargetTime);
-    const activeSlideIndex = useDesktopSlideshow(DESKTOP_SLIDE_SEEDS.length, guestState.isOpened);
+    const activeSlideIndex = useDesktopSlideshow(
+        config.media.desktopSlides.length,
+        guestState.isOpened,
+        config.presentation.slideshowIntervalMs,
+    );
     const guestQueryName = useGuestQueryName();
 
     const [areModalActionsVisible, setAreModalActionsVisible] = useState(true);
-    const [videoProgress, setVideoProgress] = useState<{
-        isLoading: boolean;
-        percent: number;
-        label: string;
-        errorText: string | null;
-    }>({
-        isLoading: Boolean(videoSrc),
-        percent: 0,
-        label: '',
-        errorText: null,
-    });
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const modalRef = useRef<HTMLDivElement | null>(null);
@@ -182,26 +223,6 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
             videoOptions: {
                 videoEl: videoRef.current,
                 src: videoSrc,
-                onProgress: (percent, label) => {
-                    setVideoProgress({
-                        isLoading: true,
-                        percent,
-                        label,
-                        errorText: null,
-                    });
-                },
-                onReady: () => {
-                    setVideoProgress((prev) => ({
-                        ...prev,
-                        isLoading: false,
-                    }));
-                },
-                onError: (message) => {
-                    setVideoProgress((prev) => ({
-                        ...prev,
-                        errorText: message,
-                    }));
-                },
             },
         });
 
@@ -218,7 +239,15 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
         }
     }, [offlineState.isOnline, audioState.isPlaying]);
 
-    const calendarUrl = useMemo(() => buildGoogleCalendarUrl('Asia/Jakarta'), []);
+    const calendarUrl = useMemo(
+        () =>
+            buildGoogleCalendarUrl({
+                ...config.event,
+                calendarTitle: `The Wedding of ${coupleNames}`,
+                locationAddress,
+            }),
+        [config.event, coupleNames, locationAddress],
+    );
 
     const handleSaveToCalendar = useCallback(() => {
         window.open(calendarUrl, '_blank', 'noopener,noreferrer');
@@ -236,37 +265,12 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
         }
     }, [guestState.selectedImage]);
 
-    const selectedImageSrc = guestState.selectedImage?.src ?? './assets/images/placeholder.webp';
+    const selectedImageSrc = guestState.selectedImage?.src ?? config.media.placeholderImageSrc;
+    const isVideoOverlayVisible = videoState.status === 'loading' || videoState.status === 'error';
 
     return (
         <>
-            {/* Declarative Network Status Banner */}
-            {offlineState.bannerState !== 'hidden' && (
-                <div className="fixed-top pe-none" style={{ opacity: 1, zIndex: 1057, transition: 'opacity 300ms ease' }}>
-                    <div className="d-flex justify-content-center mx-auto">
-                        <div
-                            className={`d-flex justify-content-center align-items-center rounded-pill my-2 ${
-                                offlineState.bannerState === 'offline' ? 'bg-danger' : 'bg-success'
-                            } shadow`}
-                        >
-                            <small
-                                className="text-center py-1 px-2 mx-1 mt-1 mb-0 text-white"
-                                style={{ fontSize: '0.8rem' }}
-                            >
-                                {offlineState.bannerState === 'offline' ? (
-                                    <>
-                                        <i className="fa-solid fa-ban me-2"></i>Koneksi tidak tersedia
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="fa-solid fa-cloud me-2"></i>Koneksi tersedia kembali
-                                    </>
-                                )}
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <OfflineStatusBanner bannerState={offlineState.bannerState} />
 
             {/* Root Invitation */}
             <div className={guestState.isOpened ? 'row m-0 p-0' : 'row m-0 p-0 opacity-0'} id="root">
@@ -275,11 +279,11 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                     <div className="position-relative bg-white-black d-flex justify-content-center align-items-center vh-100">
                         <div className="d-flex position-absolute w-100 h-100">
                             <div className="position-relative overflow-hidden vw-100">
-                                {DESKTOP_SLIDE_SEEDS.map((seed, index) => {
+                                {config.media.desktopSlides.map((slideItem, index) => {
                                     const isActive = index === activeSlideIndex;
                                     return (
                                         <div
-                                            key={seed}
+                                            key={slideItem.id}
                                             className={`position-absolute h-100 w-100 slide-desktop${
                                                 isActive ? ' slide-desktop-active' : ''
                                             }`}
@@ -290,9 +294,9 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                         >
                                             <img
                                                 ref={registerImageRef}
-                                                src="./assets/images/placeholder.webp"
-                                                data-src={`https://picsum.photos/1000/1000?random=${seed}`}
-                                                alt="bg"
+                                                src={config.media.placeholderImageSrc}
+                                                data-src={slideItem.src}
+                                                alt={slideItem.alt}
                                                 className="bg-cover-home"
                                                 style={{ maskImage: 'none', opacity: '30%' }}
                                             />
@@ -330,8 +334,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                         >
                             <img
                                 ref={registerImageRef}
-                                src="./assets/images/placeholder.webp"
-                                data-src="./assets/images/3.jpeg"
+                                src={config.media.placeholderImageSrc}
+                                data-src={config.couple.heroPhotoSrc}
                                 alt="bg"
                                 className="position-absolute opacity-25 top-50 start-50 translate-middle bg-cover-home"
                             />
@@ -346,8 +350,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
 
                                 <img
                                     ref={registerImageRef}
-                                    src="./assets/images/placeholder.webp"
-                                    data-src="./assets/images/3.jpeg"
+                                    src={config.media.placeholderImageSrc}
+                                    data-src={config.couple.heroPhotoSrc}
                                     alt="bg"
                                     onClick={handleOpenImageModal}
                                     className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
@@ -381,7 +385,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </div>
                         </section>
 
-                        <WaveSeparator pathD="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,165.3C672,160,768,96,864,96C960,96,1056,160,1152,154.7C1248,149,1344,75,1392,37.3L1440,0L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
+                        <WaveSeparator pathD={WAVE_HOME_TO_BRIDE} />
 
                         {/* Bride */}
                         <section ref={registerSectionRef} className="bg-white-black text-center" id="bride">
@@ -399,8 +403,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                     <div data-aos="fade-right" data-aos-duration="2000" className="pb-1">
                                         <img
                                             ref={registerImageRef}
-                                            src="./assets/images/placeholder.webp"
-                                            data-src="./assets/images/2.jpeg"
+                                            src={config.media.placeholderImageSrc}
+                                            data-src={config.couple.groomPhotoSrc}
                                             alt="groom"
                                             onClick={handleOpenImageModal}
                                             className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
@@ -423,8 +427,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                     <div data-aos="fade-left" data-aos-duration="2000" className="pb-1">
                                         <img
                                             ref={registerImageRef}
-                                            src="./assets/images/placeholder.webp"
-                                            data-src="./assets/images/1.jpeg"
+                                            src={config.media.placeholderImageSrc}
+                                            data-src={config.couple.bridePhotoSrc}
                                             alt="bride"
                                             onClick={handleOpenImageModal}
                                             className="img-center-crop rounded-circle border border-3 border-light shadow my-4 mx-auto cursor-pointer"
@@ -439,7 +443,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </div>
                         </section>
 
-                        <WaveSeparator pathD="M0,192L40,181.3C80,171,160,149,240,149.3C320,149,400,171,480,165.3C560,160,640,128,720,128C800,128,880,160,960,186.7C1040,213,1120,235,1200,218.7C1280,203,1360,149,1400,122.7L1440,96L1440,0L1400,0C1360,0,1280,0,1200,0C1120,0,1040,0,960,0C880,0,800,0,720,0C640,0,560,0,480,0C400,0,320,0,240,0C160,0,80,0,40,0L0,0Z" />
+                        <WaveSeparator pathD={WAVE_BRIDE_TO_STORY} />
 
                         {/* Love Story */}
                         <section ref={registerSectionRef} className="bg-light-dark pt-2 pb-4">
@@ -464,7 +468,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                                 playsInline
                                             />
 
-                                            {videoProgress.isLoading && (
+                                            {isVideoOverlayVisible && (
                                                 <div
                                                     className="position-absolute d-flex flex-column justify-content-center align-items-center top-50 start-50 translate-middle w-100 h-100 bg-overlay-auto rounded-4 z-3"
                                                     id="video-love-stroy-loading"
@@ -479,8 +483,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                                             className="progress-bar"
                                                             id="progress-bar-video-love-stroy"
                                                             style={{
-                                                                width: `${videoProgress.percent}%`,
-                                                                backgroundColor: videoProgress.errorText
+                                                                width: `${videoState.percent}%`,
+                                                                backgroundColor: videoState.errorText
                                                                     ? 'red'
                                                                     : undefined,
                                                             }}
@@ -491,7 +495,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                                                         id="progress-info-video-love-stroy"
                                                         style={{ fontSize: '0.7rem' }}
                                                     >
-                                                        {videoProgress.errorText ?? videoProgress.label}
+                                                        {videoState.errorText ?? videoState.label}
                                                     </small>
                                                 </div>
                                             )}
@@ -501,7 +505,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                             </div>
                         </section>
 
-                        <WaveSeparator pathD="M0,96L30,106.7C60,117,120,139,180,154.7C240,171,300,181,360,186.7C420,192,480,192,540,181.3C600,171,660,149,720,154.7C780,160,840,192,900,208C960,224,1020,224,1080,208C1140,192,1200,160,1260,138.7C1320,117,1380,107,1410,101.3L1440,96L1440,320L1410,320C1380,320,1320,320,1260,320C1200,320,1140,320,1080,320C1020,320,960,320,900,320C840,320,780,320,720,320C660,320,600,320,540,320C480,320,420,320,360,320C300,320,240,320,180,320C120,320,60,320,30,320L0,320Z" />
+                        <WaveSeparator pathD={WAVE_STORY_TO_DATE} />
 
                         {/* Wedding Date */}
                         <section ref={registerSectionRef} className="bg-white-black pb-2" id="wedding-date">
@@ -638,8 +642,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
 
                             <img
                                 ref={registerImageRef}
-                                src="./assets/images/placeholder.webp"
-                                data-src="./assets/images/3.jpeg"
+                                src={config.media.placeholderImageSrc}
+                                data-src={config.couple.heroPhotoSrc}
                                 alt="background"
                                 className="img-center-crop rounded-circle border border-3 border-light shadow mb-4 mx-auto"
                             />
@@ -716,8 +720,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                         <div className="d-flex flex-column width-loading text-center">
                             <img
                                 ref={registerImageRef}
-                                src="./assets/images/placeholder.webp"
-                                data-src="./assets/images/icon-192x192.png"
+                                src={config.media.placeholderImageSrc}
+                                data-src={config.media.appIconSrc}
                                 fetchPriority="high"
                                 className="img-fluid mb-3 mx-auto object-fit-cover"
                                 alt="icon"
@@ -756,7 +760,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = ({
                         <div className="d-flex flex-column">
                             <small className="text-secondary">from</small>
                             <small className="text-theme-auto">
-                                <i className="fa-brands fa-github me-1"></i>dewanakl
+                                <i className="fa-brands fa-github me-1"></i>
+                                {config.presentation.footerAttribution}
                             </small>
                         </div>
                     </div>

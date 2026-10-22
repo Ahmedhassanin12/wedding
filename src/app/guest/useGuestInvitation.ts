@@ -1,8 +1,12 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
+import { guest, type GuestSnapshot } from './guest';
 import { progress, type ProgressSnapshot } from './progress';
 import { audio, type AudioSnapshot } from './audio';
+import { video, type VideoSnapshot } from './video';
 import { offline, type OfflineSnapshot } from '../../common/offline';
 import { theme, type ThemeSnapshot } from '../../common/theme';
+import { useStore } from '../../state/store';
+import { invitationConfig, type EventConfig } from '../../config/invitationConfig';
 
 export interface CountdownValues {
     days: string;
@@ -13,7 +17,7 @@ export interface CountdownValues {
 
 const padTwoDigits = (num: number): string => (num < 10 ? `0${num}` : `${num}`);
 
-const computeCountdown = (targetTime: string): CountdownValues => {
+export const computeCountdown = (targetTime: string): CountdownValues => {
     const targetMs = new Date(targetTime.replace(' ', 'T')).getTime();
     const distance = Math.abs((Number.isNaN(targetMs) ? Date.now() : targetMs) - Date.now());
 
@@ -49,7 +53,11 @@ export const useCountdown = (targetTime: string): CountdownValues => {
     return values;
 };
 
-export const useDesktopSlideshow = (slideCount: number, isOpened: boolean, intervalMs = 6000): number => {
+export const useDesktopSlideshow = (
+    slideCount: number,
+    isOpened: boolean,
+    intervalMs = invitationConfig.get().presentation.slideshowIntervalMs,
+): number => {
     const [activeIndex, setActiveIndex] = useState(0);
 
     useEffect(() => {
@@ -121,31 +129,30 @@ export const useGuestQueryName = (): string | null => {
     return guestName;
 };
 
-export const useProgressStore = (): ProgressSnapshot =>
-    useSyncExternalStore(progress.subscribe, progress.getSnapshot);
+export const useGuestStore = (): GuestSnapshot => useStore(guest);
 
-export const useOfflineStore = (): OfflineSnapshot =>
-    useSyncExternalStore(offline.subscribe, offline.getSnapshot);
+export const useProgressStore = (): ProgressSnapshot => useStore(progress);
 
-export const useThemeStore = (): ThemeSnapshot =>
-    useSyncExternalStore(theme.subscribe, theme.getSnapshot);
+export const useOfflineStore = (): OfflineSnapshot => useStore(offline);
 
-export const useAudioStore = (): AudioSnapshot =>
-    useSyncExternalStore(audio.subscribe, audio.getSnapshot);
+export const useThemeStore = (): ThemeSnapshot => useStore(theme);
 
-export const buildGoogleCalendarUrl = (timeZone = 'Asia/Jakarta'): string => {
+export const useAudioStore = (): AudioSnapshot => useStore(audio);
+
+export const useVideoStore = (): VideoSnapshot => useStore(video);
+
+export const buildGoogleCalendarUrl = (eventConfig: EventConfig = invitationConfig.get().event): string => {
     const formatDate = (d: string): string =>
         new Date(d.replace(' ', 'T') + ':00Z').toISOString().replace(/[-:]/g, '').split('.').shift() ?? '';
 
     const url = new URL('https://calendar.google.com/calendar/render');
     const data = new URLSearchParams({
         action: 'TEMPLATE',
-        text: 'The Wedding of Wahyu and Riski',
-        dates: `${formatDate('2023-03-15 10:00')}/${formatDate('2023-03-15 11:00')}`,
-        details:
-            'Tanpa mengurangi rasa hormat, kami mengundang Anda untuk berkenan menghadiri acara pernikahan kami. Terima kasih atas perhatian dan doa restu Anda, yang menjadi kebahagiaan serta kehormatan besar bagi kami.',
-        location: 'RT 10 RW 02, Desa Pajerukan, Kec. Kalibagor, Kab. Banyumas, Jawa Tengah 53191.',
-        ctz: timeZone,
+        text: eventConfig.calendarTitle,
+        dates: `${formatDate(eventConfig.calendarStartTime)}/${formatDate(eventConfig.calendarEndTime)}`,
+        details: eventConfig.calendarDescription,
+        location: eventConfig.locationAddress,
+        ctz: eventConfig.calendarTimeZone,
     });
 
     url.search = data.toString();

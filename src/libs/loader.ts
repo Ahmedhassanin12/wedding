@@ -1,12 +1,12 @@
 import { cache, type CacheInstance } from '../connection/cache';
+import { invitationConfig } from '../config/invitationConfig';
 import type { LoaderOptions } from '../types';
 
 const loadAOS = (c: CacheInstance): Promise<void> => {
-    const urlCss = 'https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css';
-    const urlJs = 'https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js';
+    const { aosCssUrl, aosJsUrl } = invitationConfig.get().network.cdnAssets;
 
     const loadCss = (): Promise<void> =>
-        c.get(urlCss).then(
+        c.get(aosCssUrl).then(
             (uri) =>
                 new Promise<void>((res, rej) => {
                     const link = document.createElement('link');
@@ -20,7 +20,7 @@ const loadAOS = (c: CacheInstance): Promise<void> => {
         );
 
     const loadJs = (): Promise<void> =>
-        c.get(urlJs).then(
+        c.get(aosJsUrl).then(
             (uri) =>
                 new Promise<void>((res, rej) => {
                     const sc = document.createElement('script');
@@ -42,9 +42,9 @@ const loadAOS = (c: CacheInstance): Promise<void> => {
 };
 
 const loadConfetti = (c: CacheInstance): Promise<void> => {
-    const url = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.js';
+    const { confettiJsUrl } = invitationConfig.get().network.cdnAssets;
 
-    return c.get(url).then(
+    return c.get(confettiJsUrl).then(
         (uri) =>
             new Promise<void>((res, rej) => {
                 const sc = document.createElement('script');
@@ -64,12 +64,9 @@ const loadConfetti = (c: CacheInstance): Promise<void> => {
 };
 
 const loadAdditionalFont = (c: CacheInstance): Promise<void> => {
-    const fonts: ReadonlyArray<{ css: string; family: string }> = [
-        { css: 'https://fonts.googleapis.com/css2?family=Sacramento&display=swap', family: 'Sacramento' },
-        { css: 'https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic&display=swap', family: 'Noto Naskh Arabic' },
-    ];
+    const { fonts } = invitationConfig.get().network.cdnAssets;
 
-    const loadFont = ({ css, family }: { css: string; family: string }): Promise<FontFace[]> =>
+    const loadFont = ({ css, family }: { readonly css: string; readonly family: string }): Promise<FontFace[]> =>
         c
             .get(css)
             .then(
@@ -90,18 +87,19 @@ const loadAdditionalFont = (c: CacheInstance): Promise<void> => {
 };
 
 export const loader = (opt: LoaderOptions = {}): Promise<void> => {
+    const { presentation } = invitationConfig.get();
     const promises: Promise<void>[] = [];
     const c = cache('libs').withForceCache();
 
-    if (opt?.aos ?? true) {
+    if (opt.aos ?? presentation.enableAos) {
         promises.push(loadAOS(c));
     }
 
-    if (opt?.confetti ?? true) {
+    if (opt.confetti ?? presentation.enableConfetti) {
         promises.push(loadConfetti(c));
     }
 
-    if (opt?.additionalFont ?? true) {
+    if (opt.additionalFont ?? presentation.enableAdditionalFonts) {
         promises.push(loadAdditionalFont(c));
     }
 
