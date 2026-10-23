@@ -59,6 +59,6 @@ export const INVITATION_DESIGN_REGISTRY: Record<InvitationDesignId, InvitationDe
 
 export const INVITATION_DESIGN_LIST: InvitationDesignDefinition[] = Object.values(INVITATION_DESIGN_REGISTRY);
 
-export const getDesignDefinition = (id: InvitationDesignId): InvitationDesignDefinition => {
+export const getDesignDefinition = (_id?: InvitationDesignId): InvitationDesignDefinition => {
     return INVITATION_DESIGN_REGISTRY['royal-filigree'];
 };
