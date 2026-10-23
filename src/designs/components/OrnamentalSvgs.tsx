@@ -443,41 +443,46 @@ export const FloatingPetalsOverlay: React.FC<{ variant?: 'petals' | 'sparkles' }
 
 /**
  * Reusable Love Story Video Card that preserves `#video-love-stroy` and `#video-love-stroy-loading`
- * while adapting to the active design template's surface and border tokens.
+ * when videoSrc is provided, or renders an authentic Quranic verse message card in Arabic language when videoSrc is not provided.
  */
 export const LoveStoryVideoCard: React.FC<{
     videoSrc?: string;
     videoRef: React.RefObject<HTMLVideoElement | null>;
     videoState: VideoSnapshot;
     title?: string;
-}> = ({ videoSrc, videoRef, videoState, title = 'Our Love Story' }) => {
-    if (!videoSrc || !videoSrc.trim()) {
-        return null;
-    }
+    verseArabicText?: string;
+    verseSourceArabic?: string;
+}> = ({
+    videoSrc,
+    videoRef,
+    videoState,
+    title = 'Our Love Story',
+    verseArabicText = '«وَمِنْ آيَاتِهِ أَنْ خَلَقَ لَكُم مِّنْ أَنفُسِكُمْ أَزْوَاجًا لِّتَسْكُنُوا إِلَيْهَا وَجَعَلَ بَيْنَكُم مَّوَدَّةً وَرَحْمَةً ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَتَفَكَّرُونَ»',
+    verseSourceArabic = 'سورة الروم — آية ٢١',
+}) => {
+    if (videoSrc && videoSrc.trim()) {
+        const isVideoOverlayVisible = videoState.status === 'loading' || videoState.status === 'error';
 
-    const isVideoOverlayVisible = videoState.status === 'loading' || videoState.status === 'error';
-
-    return (
-        <div
-            className="rounded-5 shadow-sm p-3"
-            style={{
-                backgroundColor: 'var(--inv-surface)',
-                border: '1px solid var(--inv-border)',
-                color: 'var(--inv-text)',
-            }}
-        >
-            <h2
-                className="font-esthetic text-center py-2 mb-2"
+        return (
+            <div
+                className="rounded-5 shadow-sm p-3"
                 style={{
-                    fontSize: '2.125rem',
-                    fontFamily: 'var(--inv-font-display)',
-                    color: 'var(--inv-primary)',
+                    backgroundColor: 'var(--inv-surface)',
+                    border: '1px solid var(--inv-border)',
+                    color: 'var(--inv-text)',
                 }}
             >
-                {title}
-            </h2>
+                <h2
+                    className="font-esthetic text-center py-2 mb-2"
+                    style={{
+                        fontSize: '2.125rem',
+                        fontFamily: 'var(--inv-font-display)',
+                        color: 'var(--inv-primary)',
+                    }}
+                >
+                    {title}
+                </h2>
 
-            {videoSrc && (
                 <div
                     id="video-love-stroy"
                     className="position-relative rounded-4 mb-2 pb-0"
@@ -522,7 +527,53 @@ export const LoveStoryVideoCard: React.FC<{
                         </div>
                     )}
                 </div>
-            )}
+            </div>
+        );
+    }
+
+    // Fallback: Message in Arabic language from Quran without any picture
+    return (
+        <div
+            className="rounded-5 shadow-sm p-4 text-center inv-quranic-message-card"
+            style={{
+                backgroundColor: 'var(--inv-surface)',
+                border: '1px solid var(--inv-border)',
+                color: 'var(--inv-text)',
+            }}
+            dir="rtl"
+        >
+            <p
+                className="mb-3 font-arabic"
+                style={{
+                    fontSize: '1.25rem',
+                    color: 'var(--inv-secondary)',
+                    letterSpacing: '0.02em',
+                    lineHeight: 1.8,
+                }}
+            >
+                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+            </p>
+            <p
+                className="mb-3 font-arabic"
+                style={{
+                    fontSize: '1.35rem',
+                    lineHeight: 2.2,
+                    color: 'var(--inv-text)',
+                    fontWeight: 500,
+                }}
+            >
+                {verseArabicText}
+            </p>
+            <small
+                className="d-block font-arabic"
+                style={{
+                    fontSize: '0.95rem',
+                    color: 'var(--inv-muted)',
+                    letterSpacing: '0.04em',
+                }}
+            >
+                {verseSourceArabic}
+            </small>
         </div>
     );
 };

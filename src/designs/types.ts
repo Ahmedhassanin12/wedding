@@ -57,6 +57,8 @@ export interface ResolvedInvitationContent {
     readonly guestQueryName: string | null;
     readonly verseText: string;
     readonly verseSource: string;
+    readonly verseArabicText: string;
+    readonly verseSourceArabic: string;
     readonly celebrationHeading: string;
     readonly desktopSlides: InvitationConfig['media']['desktopSlides'];
 }

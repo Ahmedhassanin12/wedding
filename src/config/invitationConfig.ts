@@ -53,6 +53,8 @@ export interface PresentationConfig {
     readonly guestSalutation: string;
     readonly verseText: string;
     readonly verseSource: string;
+    readonly verseArabicText: string;
+    readonly verseSourceArabic: string;
     readonly celebrationHeading: string;
     readonly enableConfetti: boolean;
     readonly enableAos: boolean;
@@ -130,19 +132,19 @@ export const isInvitationDesignId = (value: unknown): value is InvitationDesignI
 
 export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
     couple: {
-        coupleNames: 'Ahmed & Esraa',
+        coupleNames: 'Ahmed & Nermin',
         groomName: 'Ahmed',
-        brideName: 'Esraa',
+        brideName: 'Nermin',
         heroPhotoSrc: './assets/images/3.png',
         groomPhotoSrc: './assets/images/2.png',
         bridePhotoSrc: './assets/images/1.jpg',
     },
     event: {
-        weddingDateDisplay: 'Thursday, 22 December 2026',
-        weddingDateTimeDisplay: 'Thursday, 22 December 2026 · 9:00 PM',
+        weddingDateDisplay: 'Thursday, 8 October 2026',
+        weddingDateTimeDisplay: 'Thursday, 8 October 2026 · 9:00 PM',
         ceremonyTimeDisplay: '9:00 PM - Until finished',
-        countdownTargetTime: '2026-12-22 21:00:00',
-        calendarTitle: 'The Wedding of Ahmed & Esraa',
+        countdownTargetTime: '2026-10-08 21:00:00',
+        calendarTitle: 'The Wedding of Ahmed & Nermin',
         calendarStartTime: '2026-12-22 21:00',
         calendarEndTime: '2026-12-22 23:59',
         calendarTimeZone: 'Africa/Cairo',
@@ -167,6 +169,9 @@ export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
         verseText:
             '"And among His signs is that He created for you mates from among yourselves, that you may find tranquility in them, and He placed between you affection and mercy. Indeed in that are signs for a people who reflect."',
         verseSource: 'SURAH AR-RUM — 30:21',
+        verseArabicText:
+            'وَمِنْ آيَاتِهِ أَنْ خَلَقَ لَكُم مِّنْ أَنفُسِكُمْ أَزْوَاجًا لِّتَسْكُنُوا إِلَيْهَا وَجَعَلَ بَيْنَكُم مَّوَدَّةً وَرَحْمَةً ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَتَفَكَّرُونَ',
+        verseSourceArabic: 'سورة الروم — آية ٢١',
         celebrationHeading: 'The celebration begins.',
         enableConfetti: true,
         enableAos: true,
@@ -188,7 +193,7 @@ export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
             lightColors: ['#ffffff', '#f8f9fa'],
             darkColors: ['#000000', '#212529'],
         },
-        footerAttribution: 'dewanakl',
+        footerAttribution: 'Ahmedhassanin12',
     },
     design: {
         defaultDesignId: 'royal-filigree',

@@ -40,6 +40,8 @@ export interface GuestInvitationProps {
     guestSalutation?: string;
     verseText?: string;
     verseSource?: string;
+    verseArabicText?: string;
+    verseSourceArabic?: string;
     celebrationHeading?: string;
     autoInit?: boolean;
 }
@@ -110,6 +112,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
     const guestSalutation = props.guestSalutation ?? config.presentation.guestSalutation;
     const verseText = props.verseText ?? config.presentation.verseText;
     const verseSource = props.verseSource ?? config.presentation.verseSource;
+    const verseArabicText = props.verseArabicText ?? config.presentation.verseArabicText;
+    const verseSourceArabic = props.verseSourceArabic ?? config.presentation.verseSourceArabic;
     const celebrationHeading = props.celebrationHeading ?? config.presentation.celebrationHeading;
     const enableDesignStudio = props.enableDesignStudio ?? config.design.enableDesignStudio;
     const autoInit = props.autoInit ?? false;
@@ -254,6 +258,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
             guestQueryName,
             verseText,
             verseSource,
+            verseArabicText,
+            verseSourceArabic,
             celebrationHeading,
             desktopSlides: config.media.desktopSlides,
         }),
@@ -275,6 +281,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
             guestQueryName,
             verseText,
             verseSource,
+            verseArabicText,
+            verseSourceArabic,
             celebrationHeading,
             config.media.desktopSlides,
         ],

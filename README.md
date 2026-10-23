@@ -1,73 +1,121 @@
-# 💌 Template website undangan pernikahan sederhana
+# Modern Online Wedding Invitation
 
-![Thumbnail](/assets/images/banner.webp)
+A modern, responsive, and customizable online wedding invitation web application built with **React 19**, **TypeScript 5.8**, and **Vite 8**. It features a multi-design template architecture with a live Design Studio customizer, elegant typography, offline resilience, and Google Calendar integration.
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/cef32dbf-f26f-4865-84a9-b85a439c9994/deploy-status)](https://app.netlify.com/sites/ulems/deploys)
-[![Hits](https://dikit.my.id/0b3y8q)](https://cie.my.id)
-[![GitHub repo size](https://img.shields.io/github/repo-size/dewanakl/undangan?color=brightgreen)](https://shields.io)
-[![GitHub License](https://img.shields.io/github/license/dewanakl/undangan?color=brightgreen)](https://shields.io)
+---
 
-## 🚀 Demo
-Untuk kamu yang ingin melihat demo terlebih dahulu:
+## ✨ Features
 
-[https://ulems.my.id/?to=Teman teman semua](https://ulems.my.id/?to=Teman%20teman%20semua)
+- **Multi-Design Template System**:
+  - **Royal Champagne Filigree**: Golden filigree archway, swan lake illustration, scalloped vintage lace Quranic verse frame, and colon countdown.
+  - **Crimson Velvet & Wax Seal**: Burgundy floral-lace envelope with embossed 3D gold heart wax seal and rising ivory parchment letter card.
+  - **Botanical Sage Editorial**: Deep forest sage and bronze editorial magazine layout with architectural arch geometry.
+  - **Classic Split-Wave**: Dual-panel desktop showcase with layered animated SVG waves and clean timeline.
+- **Interactive Design Studio**: Slide-over drawer to switch templates in real time, customize color tokens, change typography pairings, and adjust countdown presentation styles.
+- **Optional Love Story Video & Quranic Message Fallback**: Provide an optional video URL or let the invitation automatically display a Quranic verse in Arabic calligraphy (*Surah Ar-Rum 30:21*).
+- **Personalized Guest Salutation**: Automatically personalizes the invitation via URL query parameters (e.g., `?to=Guest+Name`).
+- **Interactive Features**:
+  - Background audio player with smooth fade and offline pause
+  - Confetti celebration on opening
+  - Countdown timer to the wedding date
+  - One-click Google Calendar integration
+  - Interactive image lightbox modal with download capability
+  - Auto and dark/light theme toggle
 
-## 📦 Documentation
+---
 
-* Jalankan perintah `npm install`, lalu `npm run dev`, dan buka `http://localhost:8080`.
-* Ubah isi file `index.html` sesuai keinginanmu.
-* Jika tidak ingin menggunakan **fitur komentar**, hapus atribut `data-url` dan `data-key` di elemen `<body>` pada index.html.
-* Sesuaikan `data-url` pada `<body>` di index dan dashboard sesuai dengan URL backend (jika kamu meng-hosting sendiri).
-* Sesuaikan juga `data-key` di index dengan access key yang bisa kamu ambil dari dashboard.
-* Jika ingin menggunakan GIF, dapatkan Tenor API key di [developers.google.com/tenor](https://developers.google.com/tenor/guides/quickstart).
-* Untuk deployment, jalankan `npm run build:public`. Folder `public` adalah yang akan kamu upload.
-* Untuk backend self-hosting, lihat penjelasan di bawah, atau gunakan **trial API** secara gratis.
+## 🚀 Getting Started
 
-> Undangan ini hanya menggunakan HTML, CSS, dan JavaScript biasa. NPM digunakan agar file JavaScript bisa langsung dieksekusi (bukan bertipe module lagi).
+### Prerequisites
 
-> Jika tetap ingin tanpa NPM, ubah `src="./dist/guest.js"` menjadi `src="./js/guest.js" type="module"` pada tag `<head>` di index dan dashboard.html, dengan risiko glitch tema di awal loading.
+- [Node.js](https://nodejs.org/) (version 18 or later recommended)
+- `npm`
 
-> Jika kamu punya pertanyaan, gunakan fitur `discussions` agar bisa dibaca juga oleh teman-teman lainnya.
+### Installation
 
-> [!WARNING]  
-> Gunakan versi 3.14.0, untuk versi 4 masih tahap pengembangan dan berpotensi teredapat bug 🐛
+```bash
+# Clone the repository
+git clone https://github.com/Ahmedhassanin12/wedding.git
 
-## 🔥 Deployment API
+# Navigate to the project directory
+cd wedding
 
-- Video\
-    otw
+# Install dependencies
+npm install
+```
 
-- Presentation
-    [https://docs.google.com/presentation](https://docs.google.com/presentation/d/1EY2YmWdZUI7ASoo0f2wvU7ec_Yt0uZanYa8YLbfNysk/edit)
+### Local Development
 
-## ⏰ Trial API
-Untuk kamu yang ingin mencoba secara gratis:
+Start the Vite development server with hot-module replacement:
 
-[https://trial.ulems.my.id](https://trial.ulems.my.id)
+```bash
+npm run dev
+```
 
-## ⚙️ Tech stack
+Open your browser at `http://localhost:8080`.
 
-- React 19
-- TypeScript 5.8
-- Vite 8
-- Vitest + React Testing Library
-- Bootstrap 5.3.8
-- AOS 2.3.4
-- Fontawesome 7.1.0
-- Canvas Confetti 1.9.3
-- Google Fonts
+---
 
-## 🎨 Credit
-All visual assets in this project are sourced from Pixabay.
+## 🛠️ Verification & Testing
 
-## 🤝 Contributing
+Run the automated test suite and code quality linters:
 
-I'm very open to those of you who want to contribute to the undangan!
+```bash
+# Run unit and integration tests
+npm test
 
-## 🐞 Security Vulnerabilities
+# Run TypeScript typecheck
+npm run typecheck
 
-If you find any security vulnerabilities in this undangan, please email DKL via [dewanakretarta29@gmail.com](mailto:dewanakretarta29@gmail.com).
+# Run JavaScript/TypeScript linter
+npm run lint:js
+
+# Run CSS linter
+npm run lint:css
+
+# Run HTML linter
+npm run lint:html
+
+# Check for circular dependencies
+npm run circular
+```
+
+---
+
+## 🌐 Deployment to Vercel
+
+This repository includes a preconfigured `vercel.json` file for automated deployment:
+
+```json
+{
+  "buildCommand": "npm run build:public",
+  "outputDirectory": "public"
+}
+```
+
+### Deploying via Vercel Dashboard
+
+1. Import your repository into Vercel.
+2. In **Build and Output Settings**:
+   - **Build Command**: `npm run build:public`
+   - **Output Directory**: `public`
+3. Click **Deploy**.
+
+---
+
+## ⚙️ Tech Stack
+
+- **Framework**: React 19
+- **Language**: TypeScript 5.8
+- **Bundler & Dev Server**: Vite 8
+- **Testing**: Vitest + Testing Library
+- **UI & Grid**: Bootstrap 5.3
+- **Icons**: Font Awesome 7.1
+- **Animations**: AOS 2.3 & Canvas Confetti 1.9
+- **Fonts**: Cormorant Garamond, Playfair Display, Josefin Sans, Noto Naskh Arabic
+
+---
 
 ## 📜 License
 
-Undangan is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced under the [MIT License](LICENSE).

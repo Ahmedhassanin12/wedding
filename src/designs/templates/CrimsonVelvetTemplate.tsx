@@ -349,22 +349,22 @@ export const CrimsonVelvetTemplate: React.FC<InvitationTemplateProps> = ({
                             </div>
                         </section>
 
-                        {/* Love Story Video */}
-                        {Boolean(content.videoSrc?.trim()) && (
-                            <section
-                                ref={registerSectionRef}
-                                className="py-3 px-3"
-                                style={{ backgroundColor: 'var(--inv-bg)' }}
-                            >
-                                <div className="container px-0">
-                                    <LoveStoryVideoCard
-                                        videoSrc={content.videoSrc}
-                                        videoRef={videoRef}
-                                        videoState={videoState}
-                                    />
-                                </div>
-                            </section>
-                        )}
+                        {/* Love Story Video or Quranic Message */}
+                        <section
+                            ref={registerSectionRef}
+                            className="py-3 px-3"
+                            style={{ backgroundColor: 'var(--inv-bg)' }}
+                        >
+                            <div className="container px-0">
+                                <LoveStoryVideoCard
+                                    videoSrc={content.videoSrc}
+                                    videoRef={videoRef}
+                                    videoState={videoState}
+                                    verseArabicText={content.verseArabicText}
+                                    verseSourceArabic={content.verseSourceArabic}
+                                />
+                            </div>
+                        </section>
 
                         {/* Countdown & Ceremony Details */}
                         <section

@@ -145,12 +145,15 @@ describe('Multi-Design Invitation System & Design Studio Customizer', () => {
         expect(container.querySelector('.inv-lace-verse-wrapper')).not.toBeNull();
     });
 
-    it('renders cleanly without empty cards or video element when videoSrc is omitted', () => {
+    it('renders a Quranic message in Arabic language instead when videoSrc is omitted', () => {
         const { container } = render(<GuestInvitationView videoSrc="" />);
 
-        // Should not render the video element or video container
+        // Should not render the video element
         expect(container.querySelector('#video-love-stroy')).toBeNull();
-        expect(screen.queryByText('Our Love Story')).toBeNull();
-        expect(screen.queryByText('03 / OUR FILM')).toBeNull();
+
+        // Should render Quranic message in Arabic instead
+        expect(screen.getByText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ')).toBeInTheDocument();
+        expect(screen.getByText('سورة الروم — آية ٢١')).toBeInTheDocument();
+        expect(container.querySelector('.inv-quranic-message-card')).not.toBeNull();
     });
 });

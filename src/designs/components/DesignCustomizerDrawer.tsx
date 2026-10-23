@@ -18,7 +18,7 @@ export const DesignCustomizerDrawer: React.FC = () => {
     return (
         <>
             {/* Floating Trigger Button (accessible on both Welcome & Opened screens) */}
-            {/* <button
+            <button
                 type="button"
                 id="button-design-studio"
                 aria-label="Customize Invitation Design"
@@ -27,10 +27,10 @@ export const DesignCustomizerDrawer: React.FC = () => {
                 className="btn shadow-lg rounded-pill d-flex align-items-center gap-2 px-3 py-2 inv-design-studio-fab"
             >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span className="fw-semibold" style={{ fontSize: '0.78rem', letterSpacing: '0.04em' }}>
+                {/* <span className="fw-semibold" style={{ fontSize: '0.78rem', letterSpacing: '0.04em' }}>
                     Design Studio
-                </span>
-            </button> */}
+                </span> */}
+            </button>
 
             {/* Backdrop */}
             {isStudioOpen && (

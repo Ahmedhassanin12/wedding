@@ -319,29 +319,29 @@ export const BotanicalEditorialTemplate: React.FC<InvitationTemplateProps> = ({
                             </div>
                         </section>
 
-                        {/* Chapter 03: Love Story */}
-                        {Boolean(content.videoSrc?.trim()) && (
-                            <section
-                                ref={registerSectionRef}
-                                className="py-4 px-4"
-                                style={{
-                                    backgroundColor: 'var(--inv-surface)',
-                                    borderBottom: '1px solid var(--inv-border)',
-                                }}
+                        {/* Chapter 03: Our Film or Sacred Verse */}
+                        <section
+                            ref={registerSectionRef}
+                            className="py-4 px-4"
+                            style={{
+                                backgroundColor: 'var(--inv-surface)',
+                                borderBottom: '1px solid var(--inv-border)',
+                            }}
+                        >
+                            <span
+                                className="text-uppercase d-block mb-2"
+                                style={{ fontSize: '0.7rem', letterSpacing: '0.2em', color: 'var(--inv-muted)' }}
                             >
-                                <span
-                                    className="text-uppercase d-block mb-2"
-                                    style={{ fontSize: '0.7rem', letterSpacing: '0.2em', color: 'var(--inv-muted)' }}
-                                >
-                                    03 / OUR FILM
-                                </span>
-                                <LoveStoryVideoCard
-                                    videoSrc={content.videoSrc}
-                                    videoRef={videoRef}
-                                    videoState={videoState}
-                                />
-                            </section>
-                        )}
+                                {content.videoSrc?.trim() ? '03 / OUR FILM' : '03 / SACRED VERSE'}
+                            </span>
+                            <LoveStoryVideoCard
+                                videoSrc={content.videoSrc}
+                                videoRef={videoRef}
+                                videoState={videoState}
+                                verseArabicText={content.verseArabicText}
+                                verseSourceArabic={content.verseSourceArabic}
+                            />
+                        </section>
 
                         {/* Chapter 04: The Gathering & Countdown */}
                         <section
