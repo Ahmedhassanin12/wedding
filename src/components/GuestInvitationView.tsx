@@ -57,9 +57,8 @@ const OfflineStatusBanner: React.FC<OfflineStatusBannerProps> = ({ bannerState }
         <div className="fixed-top pe-none" style={{ opacity: 1, zIndex: 1057, transition: 'opacity 300ms ease' }}>
             <div className="d-flex justify-content-center mx-auto">
                 <div
-                    className={`d-flex justify-content-center align-items-center rounded-pill my-2 ${
-                        bannerState === 'offline' ? 'bg-danger' : 'bg-success'
-                    } shadow`}
+                    className={`d-flex justify-content-center align-items-center rounded-pill my-2 ${bannerState === 'offline' ? 'bg-danger' : 'bg-success'
+                        } shadow`}
                 >
                     <small
                         className="text-center py-1 px-2 mx-1 mt-1 mb-0 text-white"
@@ -105,7 +104,7 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
     const ceremonyTimeDisplay = props.ceremonyTimeDisplay ?? config.event.ceremonyTimeDisplay;
     const locationAddress = props.locationAddress ?? config.event.locationAddress;
     const googleMapsUrl = props.googleMapsUrl ?? config.event.googleMapsUrl;
-    const videoSrc = props.videoSrc ?? config.media.videoSrc;
+    const videoSrc = props.videoSrc !== undefined ? props.videoSrc : config.media.videoSrc;
     const audioSrc = props.audioSrc ?? config.media.audioSrc;
     const enableConfetti = props.enableConfetti ?? config.presentation.enableConfetti;
     const guestSalutation = props.guestSalutation ?? config.presentation.guestSalutation;
@@ -342,20 +341,18 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
                     type="button"
                     id="button-music"
                     disabled={audioState.isLoading || !offlineState.isOnline}
-                    className={`btn border btn-sm rounded-circle ${
-                        guestState.isOpened ? '' : 'd-none '
-                    }${!offlineState.isOnline ? 'disabled ' : ''}${
-                        isCustomAudioButton ? 'shadow' : 'bg-light-dark btn-transparent shadow-sm'
-                    } mt-3`}
+                    className={`btn border btn-sm rounded-circle ${guestState.isOpened ? '' : 'd-none '
+                        }${!offlineState.isOnline ? 'disabled ' : ''}${isCustomAudioButton ? 'shadow' : 'bg-light-dark btn-transparent shadow-sm'
+                        } mt-3`}
                     style={
                         isCustomAudioButton
                             ? {
-                                  backgroundColor: designState.tokens.buttonBgColor,
-                                  color: designState.tokens.buttonTextColor,
-                                  borderColor: designState.tokens.borderColor,
-                                  width: '2.5rem',
-                                  height: '2.5rem',
-                              }
+                                backgroundColor: designState.tokens.buttonBgColor,
+                                color: designState.tokens.buttonTextColor,
+                                borderColor: designState.tokens.borderColor,
+                                width: '2.5rem',
+                                height: '2.5rem',
+                            }
                             : undefined
                     }
                     aria-label="Change audio"
@@ -433,9 +430,8 @@ export const GuestInvitationView: React.FC<GuestInvitationProps> = (props) => {
                     <div className="modal-content rounded-4 border border-0">
                         <div className="modal-body p-0">
                             <div
-                                className={`${
-                                    areModalActionsVisible ? 'd-flex' : 'd-none'
-                                } position-absolute top-0 end-0`}
+                                className={`${areModalActionsVisible ? 'd-flex' : 'd-none'
+                                    } position-absolute top-0 end-0`}
                             >
                                 <a
                                     className="btn d-flex justify-content-center align-items-center bg-overlay-auto p-2 m-1 rounded-circle border shadow-sm z-1"

@@ -320,26 +320,28 @@ export const BotanicalEditorialTemplate: React.FC<InvitationTemplateProps> = ({
                         </section>
 
                         {/* Chapter 03: Love Story */}
-                        <section
-                            ref={registerSectionRef}
-                            className="py-4 px-4"
-                            style={{
-                                backgroundColor: 'var(--inv-surface)',
-                                borderBottom: '1px solid var(--inv-border)',
-                            }}
-                        >
-                            <span
-                                className="text-uppercase d-block mb-2"
-                                style={{ fontSize: '0.7rem', letterSpacing: '0.2em', color: 'var(--inv-muted)' }}
+                        {Boolean(content.videoSrc?.trim()) && (
+                            <section
+                                ref={registerSectionRef}
+                                className="py-4 px-4"
+                                style={{
+                                    backgroundColor: 'var(--inv-surface)',
+                                    borderBottom: '1px solid var(--inv-border)',
+                                }}
                             >
-                                03 / OUR FILM
-                            </span>
-                            <LoveStoryVideoCard
-                                videoSrc={content.videoSrc}
-                                videoRef={videoRef}
-                                videoState={videoState}
-                            />
-                        </section>
+                                <span
+                                    className="text-uppercase d-block mb-2"
+                                    style={{ fontSize: '0.7rem', letterSpacing: '0.2em', color: 'var(--inv-muted)' }}
+                                >
+                                    03 / OUR FILM
+                                </span>
+                                <LoveStoryVideoCard
+                                    videoSrc={content.videoSrc}
+                                    videoRef={videoRef}
+                                    videoState={videoState}
+                                />
+                            </section>
+                        )}
 
                         {/* Chapter 04: The Gathering & Countdown */}
                         <section

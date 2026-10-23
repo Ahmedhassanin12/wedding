@@ -41,7 +41,8 @@ export const video = (() => {
         }
 
         const vid = options?.videoEl ?? null;
-        const src = options?.src ?? vid?.getAttribute('data-src') ?? invitationConfig.get().media.videoSrc;
+        const rawSrc = options?.src !== undefined ? options.src : (vid?.getAttribute('data-src') ?? invitationConfig.get().media.videoSrc);
+        const src = rawSrc?.trim();
 
         if (!vid || !src) {
             store.setState({

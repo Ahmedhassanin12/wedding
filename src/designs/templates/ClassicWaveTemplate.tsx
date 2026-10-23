@@ -244,20 +244,22 @@ export const ClassicWaveTemplate: React.FC<InvitationTemplateProps> = ({
                             </div>
                         </section>
 
-                        <WaveSeparator pathD={WAVE_BRIDE_TO_STORY} />
-
                         {/* Love Story */}
-                        <section ref={registerSectionRef} className="bg-light-dark pt-2 pb-4">
-                            <div className="container">
-                                <LoveStoryVideoCard
-                                    videoSrc={content.videoSrc}
-                                    videoRef={videoRef}
-                                    videoState={videoState}
-                                />
-                            </div>
-                        </section>
-
-                        <WaveSeparator pathD={WAVE_STORY_TO_DATE} />
+                        {Boolean(content.videoSrc?.trim()) && (
+                            <>
+                                <WaveSeparator pathD={WAVE_BRIDE_TO_STORY} />
+                                <section ref={registerSectionRef} className="bg-light-dark pt-2 pb-4">
+                                    <div className="container">
+                                        <LoveStoryVideoCard
+                                            videoSrc={content.videoSrc}
+                                            videoRef={videoRef}
+                                            videoState={videoState}
+                                        />
+                                    </div>
+                                </section>
+                                <WaveSeparator pathD={WAVE_STORY_TO_DATE} />
+                            </>
+                        )}
 
                         {/* Wedding Date */}
                         <section ref={registerSectionRef} className="bg-white-black pb-2" id="wedding-date">

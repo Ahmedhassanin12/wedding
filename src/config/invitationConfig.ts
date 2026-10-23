@@ -37,7 +37,7 @@ export interface EventConfig {
 
 export interface MediaConfig {
     readonly audioSrc: string;
-    readonly videoSrc: string;
+    readonly videoSrc?: string;
     readonly placeholderImageSrc: string;
     readonly appIconSrc: string;
     readonly desktopSlides: ReadonlyArray<DesktopSlideConfig>;
@@ -105,12 +105,12 @@ export interface InvitationConfig {
 
 export type DeepPartial<T> = {
     -readonly [P in keyof T]?: T[P] extends ReadonlyArray<infer U>
-        ? ReadonlyArray<U>
-        : T[P] extends Readonly<Record<string, string>>
-          ? Readonly<Record<string, string>>
-          : T[P] extends object
-            ? DeepPartial<T[P]>
-            : T[P];
+    ? ReadonlyArray<U>
+    : T[P] extends Readonly<Record<string, string>>
+    ? Readonly<Record<string, string>>
+    : T[P] extends object
+    ? DeepPartial<T[P]>
+    : T[P];
 };
 
 export interface ConfigValidationResult {
@@ -130,30 +130,30 @@ export const isInvitationDesignId = (value: unknown): value is InvitationDesignI
 
 export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
     couple: {
-        coupleNames: 'Ahmed & Nermin',
+        coupleNames: 'Ahmed & Esraa',
         groomName: 'Ahmed',
-        brideName: 'Nermin',
-        heroPhotoSrc: './assets/images/3.jpeg',
-        groomPhotoSrc: './assets/images/2.jpeg',
-        bridePhotoSrc: './assets/images/1.jpeg',
+        brideName: 'Esraa',
+        heroPhotoSrc: './assets/images/3.png',
+        groomPhotoSrc: './assets/images/2.png',
+        bridePhotoSrc: './assets/images/1.jpg',
     },
     event: {
-        weddingDateDisplay: 'Thursday, 8 October 2026',
-        weddingDateTimeDisplay: 'Thursday, 8 October 2026 · 9:00 PM',
+        weddingDateDisplay: 'Thursday, 22 December 2026',
+        weddingDateTimeDisplay: 'Thursday, 22 December 2026 · 9:00 PM',
         ceremonyTimeDisplay: '9:00 PM - Until finished',
-        countdownTargetTime: '2026-10-08 21:00:00',
-        calendarTitle: 'The Wedding of Ahmed & Nermin',
-        calendarStartTime: '2026-10-08 21:00',
-        calendarEndTime: '2026-10-08 23:59',
+        countdownTargetTime: '2026-12-22 21:00:00',
+        calendarTitle: 'The Wedding of Ahmed & Esraa',
+        calendarStartTime: '2026-12-22 21:00',
+        calendarEndTime: '2026-12-22 23:59',
         calendarTimeZone: 'Africa/Cairo',
         calendarDescription:
             'With all due respect, we cordially invite you to attend our wedding celebration. Thank you for your attention and your blessings, which are a great joy and honor to us.',
-        locationAddress: 'Rotana High Class Village, Zifta-Tanta Road .',
+        locationAddress: 'Motobas Kafr El Sheikh',
         googleMapsUrl: 'https://maps.app.goo.gl/z9SuGTQF8qQdhhKm7?g_st=aw',
     },
     media: {
         audioSrc: './assets/music/pure-love-304010.mp3',
-        videoSrc: './assets/video/265501_tiny.mp4',
+        videoSrc: undefined,
         placeholderImageSrc: './assets/images/placeholder.webp',
         appIconSrc: './assets/images/icon-192x192.png',
         desktopSlides: [

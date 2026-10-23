@@ -446,11 +446,15 @@ export const FloatingPetalsOverlay: React.FC<{ variant?: 'petals' | 'sparkles' }
  * while adapting to the active design template's surface and border tokens.
  */
 export const LoveStoryVideoCard: React.FC<{
-    videoSrc: string;
+    videoSrc?: string;
     videoRef: React.RefObject<HTMLVideoElement | null>;
     videoState: VideoSnapshot;
     title?: string;
 }> = ({ videoSrc, videoRef, videoState, title = 'Our Love Story' }) => {
+    if (!videoSrc || !videoSrc.trim()) {
+        return null;
+    }
+
     const isVideoOverlayVisible = videoState.status === 'loading' || videoState.status === 'error';
 
     return (

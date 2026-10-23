@@ -18,7 +18,7 @@ export const DesignCustomizerDrawer: React.FC = () => {
     return (
         <>
             {/* Floating Trigger Button (accessible on both Welcome & Opened screens) */}
-            <button
+            {/* <button
                 type="button"
                 id="button-design-studio"
                 aria-label="Customize Invitation Design"
@@ -30,7 +30,7 @@ export const DesignCustomizerDrawer: React.FC = () => {
                 <span className="fw-semibold" style={{ fontSize: '0.78rem', letterSpacing: '0.04em' }}>
                     Design Studio
                 </span>
-            </button>
+            </button> */}
 
             {/* Backdrop */}
             {isStudioOpen && (
@@ -94,9 +94,8 @@ export const DesignCustomizerDrawer: React.FC = () => {
                                         aria-checked={isSelected}
                                         data-design-option={design.id}
                                         onClick={() => designStore.selectDesign(design.id)}
-                                        className={`text-start p-3 rounded-4 border transition-all inv-design-card${
-                                            isSelected ? ' is-selected' : ''
-                                        }`}
+                                        className={`text-start p-3 rounded-4 border transition-all inv-design-card${isSelected ? ' is-selected' : ''
+                                            }`}
                                     >
                                         <div className="d-flex justify-content-between align-items-start mb-1">
                                             <div>
@@ -155,9 +154,8 @@ export const DesignCustomizerDrawer: React.FC = () => {
                                             type="button"
                                             data-typography-preset={preset.id}
                                             onClick={() => designStore.setTypographyPreset(preset.id as TypographyPresetId)}
-                                            className={`w-100 text-start p-2 rounded-3 border inv-design-subcard${
-                                                isActive ? ' is-selected' : ''
-                                            }`}
+                                            className={`w-100 text-start p-2 rounded-3 border inv-design-subcard${isActive ? ' is-selected' : ''
+                                                }`}
                                         >
                                             <div className="fw-semibold" style={{ fontSize: '0.8rem' }}>
                                                 {preset.name}
@@ -256,15 +254,13 @@ export const DesignCustomizerDrawer: React.FC = () => {
                                         type="button"
                                         data-countdown-style={variant.id}
                                         onClick={() => designStore.updateTokens({ countdownStyle: variant.id })}
-                                        className={`text-start px-3 py-2 rounded-3 border inv-design-subcard${
-                                            isActive ? ' is-selected' : ''
-                                        }`}
+                                        className={`text-start px-3 py-2 rounded-3 border inv-design-subcard${isActive ? ' is-selected' : ''
+                                            }`}
                                         style={{ fontSize: '0.8rem' }}
                                     >
                                         <i
-                                            className={`fa-regular ${
-                                                isActive ? 'fa-circle-check' : 'fa-circle'
-                                            } me-2`}
+                                            className={`fa-regular ${isActive ? 'fa-circle-check' : 'fa-circle'
+                                                } me-2`}
                                         ></i>
                                         {variant.label}
                                     </button>

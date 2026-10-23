@@ -144,4 +144,13 @@ describe('Multi-Design Invitation System & Design Studio Customizer', () => {
         expect(designStore.getSnapshot().hasCustomOverrides).toBe(false);
         expect(container.querySelector('.inv-lace-verse-wrapper')).not.toBeNull();
     });
+
+    it('renders cleanly without empty cards or video element when videoSrc is omitted', () => {
+        const { container } = render(<GuestInvitationView videoSrc="" />);
+
+        // Should not render the video element or video container
+        expect(container.querySelector('#video-love-stroy')).toBeNull();
+        expect(screen.queryByText('Our Love Story')).toBeNull();
+        expect(screen.queryByText('03 / OUR FILM')).toBeNull();
+    });
 });

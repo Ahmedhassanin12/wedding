@@ -425,19 +425,21 @@ export const RoyalFiligreeTemplate: React.FC<InvitationTemplateProps> = ({
                         </section>
 
                         {/* Love Story Video */}
-                        <section
-                            ref={registerSectionRef}
-                            className="py-4 px-3"
-                            style={{ backgroundColor: 'var(--inv-bg)' }}
-                        >
-                            <div className="container px-1">
-                                <LoveStoryVideoCard
-                                    videoSrc={content.videoSrc}
-                                    videoRef={videoRef}
-                                    videoState={videoState}
-                                />
-                            </div>
-                        </section>
+                        {Boolean(content.videoSrc?.trim()) && (
+                            <section
+                                ref={registerSectionRef}
+                                className="py-4 px-3"
+                                style={{ backgroundColor: 'var(--inv-bg)' }}
+                            >
+                                <div className="container px-1">
+                                    <LoveStoryVideoCard
+                                        videoSrc={content.videoSrc}
+                                        videoRef={videoRef}
+                                        videoState={videoState}
+                                    />
+                                </div>
+                            </section>
+                        )}
 
                         {/* Closing */}
                         <section

@@ -52,7 +52,7 @@ export interface ResolvedInvitationContent {
     readonly ceremonyTimeDisplay: string;
     readonly locationAddress: string;
     readonly googleMapsUrl: string;
-    readonly videoSrc: string;
+    readonly videoSrc?: string;
     readonly guestSalutation: string;
     readonly guestQueryName: string | null;
     readonly verseText: string;
