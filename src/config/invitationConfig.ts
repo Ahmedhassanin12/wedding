@@ -132,9 +132,9 @@ export const isInvitationDesignId = (value: unknown): value is InvitationDesignI
 
 export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
     couple: {
-        coupleNames: 'Ahmed & Nermin',
+        coupleNames: 'Ahmed & Esraa',
         groomName: 'Ahmed',
-        brideName: 'Nermin',
+        brideName: 'Esraa',
         heroPhotoSrc: './assets/images/3.png',
         groomPhotoSrc: './assets/images/2.png',
         bridePhotoSrc: './assets/images/1.jpg',
@@ -144,7 +144,7 @@ export const DEFAULT_INVITATION_CONFIG: InvitationConfig = {
         weddingDateTimeDisplay: 'Thursday, 8 October 2026 · 9:00 PM',
         ceremonyTimeDisplay: '9:00 PM - Until finished',
         countdownTargetTime: '2026-10-08 21:00:00',
-        calendarTitle: 'The Wedding of Ahmed & Nermin',
+        calendarTitle: 'The Wedding of Ahmed & Esraa',
         calendarStartTime: '2026-12-22 21:00',
         calendarEndTime: '2026-12-22 23:59',
         calendarTimeZone: 'Africa/Cairo',

@@ -14,7 +14,7 @@ describe('util module', () => {
     });
 
     it('encodes and decodes UTF-8 strings via base64', () => {
-        const original = 'Happy Wedding Ahmed & Nermin 🎉 بارك الله لكما';
+        const original = 'Happy Wedding Ahmed & Esraa 🎉 بارك الله لكما';
         const encoded = util.base64Encode(original);
         expect(encoded).not.toBe(original);
         expect(util.base64Decode(encoded)).toBe(original);
@@ -57,7 +57,7 @@ describe('util module', () => {
     });
 
     it('triggers notify and ask dialogs with appropriate prefixes', () => {
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => { });
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
         util.notify('Saved').success();

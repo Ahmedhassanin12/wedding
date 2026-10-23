@@ -46,7 +46,7 @@ describe('Centralized Configuration Architecture and Reactive Store', () => {
 
     it('provides authoritative defaults and validates configuration updates', () => {
         const current = invitationConfig.get();
-        expect(current.couple.coupleNames).toBe('Ahmed & Nermin');
+        expect(current.couple.coupleNames).toBe('Ahmed & Esraa');
         expect(current.event.countdownTargetTime).toBe('2026-10-08 21:00:00');
         expect(validateInvitationConfig(DEFAULT_INVITATION_CONFIG)).toEqual({
             valid: true,
@@ -85,7 +85,7 @@ describe('Centralized Configuration Architecture and Reactive Store', () => {
 
     it('propagates runtime configuration updates to GuestInvitationView and Google Calendar URLs without editing components', () => {
         render(<GuestInvitationView />);
-        expect(screen.getAllByText('Ahmed & Nermin').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('Ahmed & Esraa').length).toBeGreaterThanOrEqual(2);
 
         act(() => {
             invitationConfig.update({

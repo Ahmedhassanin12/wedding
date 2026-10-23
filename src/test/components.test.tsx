@@ -14,9 +14,9 @@ describe('React 19 GuestInvitationView Component', () => {
         const { container } = render(<GuestInvitationView />);
 
         expect(screen.getByText('Wedding Invitation')).toBeInTheDocument();
-        expect(screen.getAllByText('Ahmed & Nermin').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('Ahmed & Esraa').length).toBeGreaterThanOrEqual(2);
         expect(screen.getByText('Ahmed')).toBeInTheDocument();
-        expect(screen.getByText('Nermin')).toBeInTheDocument();
+        expect(screen.getByText('Esraa')).toBeInTheDocument();
         expect(screen.getByText('Open Invitation')).toBeInTheDocument();
         expect(screen.getByText('View on Google Maps')).toBeInTheDocument();
         expect(container.querySelector('#comment')).toBeNull();
